@@ -9,5 +9,3 @@ MONGO_URL = os.getenv("MONGO_URL")
 client = AsyncIOMotorClient(MONGO_URL)
 
 db = client.expense_tracker
-
-print("MongoDB Connected Successfully")

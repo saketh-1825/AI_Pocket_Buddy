@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import db
 
+from app.routes.auth_routes import router as auth_router
 app = FastAPI()
 
 app.add_middleware(
@@ -21,3 +22,6 @@ async def root():
         "message": "Backend Running",
         "collections": collections
     }
+
+
+app.include_router(auth_router)
