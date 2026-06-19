@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from bson import ObjectId
 from app.database import db
-from app.models.expense_model import (
+from app.schemas.expense_schema import (
     ExpenseCreate,
     ExpenseUpdate,
     ExpenseResponse
 )
+from app.models.expense_model import expense_helper
 from app.utils.auth import get_current_user
 from typing import List, Optional
 from datetime import datetime
@@ -20,7 +21,7 @@ async def create_expense(
     current_user: dict = Depends(get_current_user)
 ):
 
-    expense_dict = expense.dict()
+    expense_dict = expense.model_dump()
 
     expense_dict["user_id"] = str(current_user["_id"])
 
@@ -68,18 +69,10 @@ async def get_expenses(
 
     expenses = await expense_collection.find(query).to_list(length=100)
 
-    formatted_expenses = []
-
-    for expense in expenses:
-        formatted_expenses.append({
-            "id": str(expense["_id"]),
-            "title": expense["title"],
-            "amount": expense["amount"],
-            "category": expense["category"],
-            "date": expense["date"]
-        })
-
-    return formatted_expenses
+    return [
+        expense_helper(expense)
+        for expense in expenses
+    ]
 
 @router.patch("/expenses/{expense_id}")
 async def update_expense(
@@ -99,11 +92,7 @@ async def update_expense(
             detail="Expense not found"
         )
 
-    update_data = {
-        k: v
-        for k, v in expense.dict().items()
-        if v is not None
-    }
+    update_data = expense.model_dump(exclude_none=True)
 
     await expense_collection.update_one(
         {"_id": ObjectId(expense_id)},

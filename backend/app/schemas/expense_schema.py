@@ -11,6 +11,14 @@ class ExpenseCreate(BaseModel):
     date: datetime
 
 
+class ExpenseUpdate(BaseModel):
+    title: Optional[str] = None
+    amount: Optional[float] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    date: Optional[datetime] = None
+
+
 class ExpenseResponse(BaseModel):
     id: str
     title: str
