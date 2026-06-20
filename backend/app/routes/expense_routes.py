@@ -9,7 +9,7 @@ from app.schemas.expense_schema import (
 from app.models.expense_model import expense_helper
 from app.utils.auth import get_current_user
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter()
 
@@ -24,6 +24,7 @@ async def create_expense(
     expense_dict = expense.model_dump()
 
     expense_dict["user_id"] = str(current_user["_id"])
+    expense_dict["created_at"] = datetime.now(timezone.utc)
 
     result = await expense_collection.insert_one(expense_dict)
 

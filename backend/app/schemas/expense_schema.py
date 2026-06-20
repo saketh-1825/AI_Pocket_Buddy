@@ -26,3 +26,4 @@ class ExpenseResponse(BaseModel):
     category: str
     description: Optional[str]
     date: datetime
+    created_at: datetime

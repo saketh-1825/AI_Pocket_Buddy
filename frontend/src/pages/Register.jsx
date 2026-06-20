@@ -36,6 +36,11 @@ function Register() {
         response.data.access_token
       );
 
+      localStorage.setItem(
+        "userName",
+        formData.name
+      );
+
       navigate("/dashboard");
 
     } catch (error) {

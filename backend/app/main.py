@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import db
 from app.routes.expense_routes import router as expense_router
 from app.routes.auth_routes import router as auth_router
+from app.routes.category_routes import router as category_router
+from app.routes.budget_routes import router as budget_router
 app = FastAPI()
 
 app.add_middleware(
@@ -26,3 +28,5 @@ async def root():
 
 app.include_router(auth_router)
 app.include_router(expense_router)
+app.include_router(category_router)
+app.include_router(budget_router)

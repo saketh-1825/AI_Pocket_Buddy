@@ -31,6 +31,13 @@ function Login() {
         response.data.access_token
       );
 
+      const fallbackName = formData.email.split("@")[0];
+      const capitalizedFallback = fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1);
+      localStorage.setItem(
+        "userName",
+        capitalizedFallback
+      );
+
       navigate("/dashboard");
 
     } catch (error) {
