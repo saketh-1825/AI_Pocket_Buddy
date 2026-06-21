@@ -30,6 +30,7 @@ import EditExpenseModal from "../components/EditExpenseModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import ExpenseSkeleton from "../components/ExpenseSkeleton";
 import AIBuddyCard from "../components/AIBuddyCard";
+import ExploreMenu from "../components/navigation/ExploreMenu";
 import { getExpenses, createExpense, updateExpense, deleteExpense } from "../api/expenses";
 import { getCategories } from "../api/categories";
 import { getCurrentBudget, updateCurrentBudget } from "../api/budget";
@@ -517,6 +518,8 @@ function ExpenseDashboard() {
                 Export CSV
               </motion.button>
             )}
+
+            <ExploreMenu categoriesCount={categories.length} />
 
             <motion.button
               whileHover={{ scale: 1.05 }}
