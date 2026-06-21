@@ -37,3 +37,17 @@ class AnalyticsSummaryResponse(BaseModel):
     highest_month: Optional[HighestMonth]
     monthly_change_percentage: float
     savings_rate: float
+
+class TrendChartPoint(BaseModel):
+    date: str
+    current_period: float
+    previous_period: float
+    expense_count: int
+
+class AnalyticsTrendsResponse(BaseModel):
+    total_spent: float
+    average_daily_spend: float
+    week_over_week: float
+    month_over_month: float
+    trend_chart: List[TrendChartPoint]
+    category_breakdown: List[CategorySummary]

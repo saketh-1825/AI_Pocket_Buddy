@@ -35,7 +35,10 @@ API.interceptors.response.use(
       } else if (status === 500) {
         toast.error("Internal Server Error. Please try again later.", { theme: "dark" });
       } else {
-        toast.error(errorMessage, { theme: "dark" });
+        const isAnalytics404 = status === 404 && error.config?.url?.endsWith("/analytics/summary");
+        if (!isAnalytics404) {
+          toast.error(errorMessage, { theme: "dark" });
+        }
       }
     } else {
       toast.error("Network error. Please check your backend connection.", { theme: "dark" });

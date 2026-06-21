@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ExpenseDashboard from "./pages/ExpenseDashboard";
 import CategoryManagement from "./pages/CategoryManagement";
+import AnalyticsDashboard from "./pages/AnalyticsDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -41,6 +42,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <CategoryManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute>
+                <AnalyticsDashboard />
               </ProtectedRoute>
             }
           />

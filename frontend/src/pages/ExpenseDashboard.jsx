@@ -18,7 +18,8 @@ import {
   FiShoppingBag,
   FiTv,
   FiActivity,
-  FiFolder
+  FiFolder,
+  FiTag
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import Papa from "papaparse";
@@ -322,6 +323,32 @@ function ExpenseDashboard() {
     .filter((e) => (e.category || "").toLowerCase() === "transport")
     .reduce((sum, e) => sum + e.amount, 0);
 
+  // Analytics Feature Card Calculations
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const sixMonthsExpenses = expenses.filter(e => new Date(e.date) >= sixMonthsAgo);
+  const sixMonthsTotal = sixMonthsExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const categoryCounts = {};
+  sixMonthsExpenses.forEach(e => {
+    const cat = e.category || "Others";
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + e.amount;
+  });
+  let topCategoryInSixMonths = "N/A";
+  let topCategoryAmount = 0;
+  Object.entries(categoryCounts).forEach(([cat, amt]) => {
+    if (amt > topCategoryAmount) {
+      topCategoryAmount = amt;
+      topCategoryInSixMonths = cat;
+    }
+  });
+
+  // Category Preview Chips Calculations
+  const activeCategoriesCount = categories.length;
+  const previewCategories = categories.length > 0 
+    ? categories.slice(0, 4).map(c => c.name) 
+    : ["Food", "Transport", "Shopping", "Entertainment"];
+
   // Search Logic
   const filteredExpenses = expenses.filter((e) => {
     const term = debouncedSearch.toLowerCase().trim();
@@ -424,6 +451,28 @@ function ExpenseDashboard() {
     }),
   };
 
+  const exploreContainerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15,
+      },
+    },
+  };
+
+  const exploreCardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+      },
+    },
+  };
+
   return (
     <div className="min-h-screen bg-[#0F0F11] text-white px-4 sm:px-6 lg:px-8 py-8 pb-24">
       <div className={`max-w-6xl mx-auto space-y-8 transition-all duration-500 ${
@@ -468,26 +517,7 @@ function ExpenseDashboard() {
                 Export CSV
               </motion.button>
             )}
-            {budgetExists ? (
-              <Link to="/categories">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="p-3 bg-[#16161A] border border-white/5 hover:border-white/10 text-[#9CA3AF] hover:text-white rounded-xl transition-all duration-200"
-                  title="Manage Categories"
-                >
-                  <FiGrid className="h-5 w-5" />
-                </motion.button>
-              </Link>
-            ) : (
-              <button
-                disabled
-                className="p-3 bg-[#16161A] border border-white/5 text-[#9CA3AF] opacity-35 cursor-not-allowed rounded-xl transition-all duration-200"
-                title="Manage Categories"
-              >
-                <FiGrid className="h-5 w-5" />
-              </button>
-            )}
+
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -500,94 +530,239 @@ function ExpenseDashboard() {
           </div>
         </header>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Card 1: THIS MONTH (Upgraded) */}
-          <motion.div
-            custom={0}
-            initial="hidden"
-            animate="visible"
-            variants={cardVariants}
-            whileHover={{ y: -4, borderColor: "rgba(168, 85, 247, 0.2)" }}
-            className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group shadow-xl flex flex-col justify-between min-h-[190px]"
-          >
-            <div className="space-y-1 relative z-10">
-              <div className="flex justify-between items-center">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
-                  This Month
-                </p>
-                {totalMonthlyExpense <= budget ? (
-                  <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-2.5 py-0.5 rounded-full border border-green-500/20">
-                    Safe Spending Zone
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-danger bg-danger/10 px-2.5 py-0.5 rounded-full border border-danger/20">
-                    Over Budget
-                  </span>
-                )}
-              </div>
-              <h2 className="text-3xl font-extrabold text-white tracking-tight">
-                {formatCurrency(totalMonthlyExpense)}
-              </h2>
+        {/* Hero Card: THIS MONTH */}
+        <motion.div
+          custom={0}
+          initial="hidden"
+          animate="visible"
+          variants={cardVariants}
+          whileHover={{ y: -4, borderColor: "rgba(168, 85, 247, 0.2)" }}
+          className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group shadow-xl flex flex-col justify-between min-h-[190px] w-full"
+        >
+          <div className="space-y-1 relative z-10">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
+                This Month
+              </p>
+              {totalMonthlyExpense <= budget ? (
+                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-2.5 py-0.5 rounded-full border border-green-500/20">
+                  Safe Spending Zone
+                </span>
+              ) : (
+                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-danger bg-danger/10 px-2.5 py-0.5 rounded-full border border-danger/20">
+                  Over Budget
+                </span>
+              )}
             </div>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+              {formatCurrency(totalMonthlyExpense)}
+            </h2>
+          </div>
 
-            <div className="space-y-2 mt-4 relative z-10">
-              <div className="flex justify-between text-xs text-[#9CA3AF]">
-                <span>
-                  Budget:{" "}
-                  {isEditingBudget ? (
-                    <input
-                      type="number"
-                      value={newBudgetVal}
-                      onChange={(e) => setNewBudgetVal(e.target.value)}
-                      onBlur={async () => {
+          <div className="space-y-2 mt-4 relative z-10">
+            <div className="flex justify-between text-xs text-[#9CA3AF]">
+              <span>
+                Budget:{" "}
+                {isEditingBudget ? (
+                  <input
+                    type="number"
+                    value={newBudgetVal}
+                    onChange={(e) => setNewBudgetVal(e.target.value)}
+                    onBlur={async () => {
+                      await handleUpdateBudget(parseFloat(newBudgetVal));
+                      setIsEditingBudget(false);
+                    }}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
                         await handleUpdateBudget(parseFloat(newBudgetVal));
                         setIsEditingBudget(false);
-                      }}
-                      onKeyDown={async (e) => {
-                        if (e.key === "Enter") {
-                          await handleUpdateBudget(parseFloat(newBudgetVal));
-                          setIsEditingBudget(false);
-                        }
-                      }}
-                      className="bg-[#0F0F11] border border-white/10 text-white rounded px-1.5 py-0.5 w-16 text-center focus:outline-none"
-                      autoFocus
-                    />
-                  ) : (
-                    <span 
-                      onClick={() => setIsEditingBudget(true)}
-                      className="text-white hover:text-primary underline cursor-pointer font-semibold transition-colors"
-                      title="Click to edit budget"
-                    >
-                      {formatCurrency(budget)}
-                    </span>
-                  )}
-                </span>
-                <span>
-                  Remaining:{" "}
-                  <span className={`font-semibold ${totalMonthlyExpense > budget ? "text-danger" : "text-success"}`}>
-                    {formatCurrency(Math.max(0, budget - totalMonthlyExpense))}
+                      }
+                    }}
+                    className="bg-[#0F0F11] border border-white/10 text-white rounded px-1.5 py-0.5 w-16 text-center focus:outline-none"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    onClick={() => setIsEditingBudget(true)}
+                    className="text-white hover:text-primary underline cursor-pointer font-semibold transition-colors"
+                    title="Click to edit budget"
+                  >
+                    {formatCurrency(budget)}
                   </span>
+                )}
+              </span>
+              <span>
+                Remaining:{" "}
+                <span className={`font-semibold ${totalMonthlyExpense > budget ? "text-danger" : "text-success"}`}>
+                  {formatCurrency(Math.max(0, budget - totalMonthlyExpense))}
                 </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full h-2 bg-[#0F0F11] rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, budget > 0 ? (totalMonthlyExpense / budget) * 100 : 0)}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className={`h-full ${totalMonthlyExpense > budget ? "bg-danger" : "bg-[#A855F7]"}`}
-                />
-              </div>
-
-              <div className="flex justify-between text-[10px] text-[#9CA3AF]/60 font-bold">
-                <span>{Math.round(Math.min(100, budget > 0 ? (totalMonthlyExpense / budget) * 100 : 0))}% used</span>
-                <span>Limit: {formatCurrency(budget)}</span>
-              </div>
+              </span>
             </div>
-          </motion.div>
 
+            {/* Progress Bar */}
+            <div className="w-full h-2 bg-[#0F0F11] rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, budget > 0 ? (totalMonthlyExpense / budget) * 100 : 0)}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className={`h-full ${totalMonthlyExpense > budget ? "bg-danger" : "bg-[#A855F7]"}`}
+              />
+            </div>
+
+            <div className="flex justify-between text-[10px] text-[#9CA3AF]/60 font-bold">
+              <span>{Math.round(Math.min(100, budget > 0 ? (totalMonthlyExpense / budget) * 100 : 0))}% used</span>
+              <span>Limit: {formatCurrency(budget)}</span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Explore Section */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={exploreContainerVariants}
+          className="space-y-4"
+        >
+          <div>
+            <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-[#9CA3AF] font-sans">
+              Explore
+            </h2>
+            <p className="text-sm text-[#9CA3AF] mt-1 font-sans">
+              Discover analytics, manage categories, and unlock AI-powered insights.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Card 1: ANALYTICS */}
+            <motion.div
+              variants={exploreCardVariants}
+              whileHover={{
+                scale: 1.02,
+                y: -4,
+                borderColor: "#A855F7",
+                boxShadow: "0 0 30px rgba(168,85,247,0.15)"
+              }}
+              onClick={() => navigate("/analytics")}
+              className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[320px] cursor-pointer"
+            >
+              {/* Premium Glow Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#A855F7]/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+              <div className="relative z-10">
+                {/* Icon */}
+                <div className="w-12 h-12 flex items-center justify-center bg-[#A855F7]/12 text-[#A855F7] rounded-[14px] mb-4">
+                  <FiActivity className="h-6 w-6" />
+                </div>
+
+                {/* Title & Subtitle */}
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
+                  ANALYTICS
+                </h3>
+                <p className="text-sm text-[#9CA3AF] mt-1.5 mb-4">
+                  Track spending trends, category insights, and AI-powered monthly reports.
+                </p>
+
+                {/* Dynamic Mini Metrics */}
+                <div className="p-3 bg-[#0F0F11] border border-white/5 rounded-xl space-y-2 mb-4">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-[#9CA3AF] font-medium">6 Months Overview</span>
+                    <span className="text-[#A855F7] font-bold">{formatCurrency(sixMonthsTotal)} Total Spend</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                    <span className="text-[#9CA3AF] font-medium">Top Category</span>
+                    <span className="text-white font-semibold flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#A855F7]" />
+                      {topCategoryInSixMonths}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Features checklist */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
+                    <span className="text-[#A855F7] font-bold">✓</span>
+                    <span>Monthly Trends</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
+                    <span className="text-[#A855F7] font-bold">✓</span>
+                    <span>Category Breakdown</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
+                    <span className="text-[#A855F7] font-bold">✓</span>
+                    <span>AI Insights</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
+                    <span className="text-[#A855F7] font-bold">✓</span>
+                    <span>Forecasting Ready</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA button */}
+              <div className="relative z-10 mt-4 flex items-center text-sm font-bold text-[#A855F7]">
+                Open Dashboard <span className="ml-1 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
+              </div>
+            </motion.div>
+
+            {/* Card 2: CATEGORY MANAGER */}
+            <motion.div
+              variants={exploreCardVariants}
+              whileHover={{
+                scale: 1.02,
+                y: -4,
+                borderColor: "#A855F7",
+                boxShadow: "0 0 30px rgba(168,85,247,0.15)"
+              }}
+              onClick={() => navigate("/categories")}
+              className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[320px] cursor-pointer"
+            >
+              {/* Premium Glow Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#A855F7]/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+              <div className="relative z-10">
+                {/* Icon */}
+                <div className="w-12 h-12 flex items-center justify-center bg-[#A855F7]/12 text-[#A855F7] rounded-[14px] mb-4">
+                  <FiTag className="h-6 w-6" />
+                </div>
+
+                {/* Title & Subtitle */}
+                <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
+                  CATEGORY MANAGER
+                </h3>
+                <p className="text-sm text-[#9CA3AF] mt-1.5 mb-4">
+                  Organize transactions with custom groups, category budgets, and color codes.
+                </p>
+
+                {/* Dynamic Mini Metrics */}
+                <div className="p-3 bg-[#0F0F11] border border-white/5 rounded-xl flex justify-between items-center text-xs mb-4">
+                  <span className="text-[#9CA3AF] font-medium">Categories Configured</span>
+                  <span className="text-[#A855F7] font-bold">{activeCategoriesCount} Active Categories</span>
+                </div>
+
+                {/* Chips preview */}
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {previewCategories.map((catName) => (
+                    <span
+                      key={catName}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#A855F7]/12 text-[#A855F7] text-xs font-semibold"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]" />
+                      {catName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* CTA button */}
+              <div className="relative z-10 mt-4 flex items-center text-sm font-bold text-[#A855F7]">
+                Manage Categories <span className="ml-1 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
+              </div>
+            </motion.div>
+          </div>
+        </motion.div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Card 2: FOOD */}
           <motion.div
             custom={1}
