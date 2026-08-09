@@ -1,88 +1,129 @@
-import {
-  FiCompass,
-  FiShoppingBag,
-  FiTv,
-  FiActivity,
-  FiFolder,
-  FiBookOpen,
-  FiGift,
-  FiHeart,
-  FiCoffee,
-  FiMapPin,
-  FiPlayCircle,
-  FiDollarSign,
-} from "react-icons/fi";
+import * as FiIcons from "react-icons/fi";
 
-// Colors palette mapping for styling categories
-export const COLOR_PALETTE = {
-  Green: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/20", hex: "#22C55E" },
-  green: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/20", hex: "#22C55E" },
-  Blue: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", hex: "#3B82F6" },
-  blue: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/20", hex: "#3B82F6" },
-  Purple: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20", hex: "#A855F7" },
-  purple: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/20", hex: "#A855F7" },
-  Orange: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20", hex: "#F97316" },
-  orange: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/20", hex: "#F97316" },
-  Pink: { bg: "bg-pink-500/10", text: "text-pink-400", border: "border-pink-500/20", hex: "#EC4899" },
-  pink: { bg: "bg-pink-500/10", text: "text-pink-400", border: "border-pink-500/20", hex: "#EC4899" },
-  Gray: { bg: "bg-gray-500/10", text: "text-gray-400", border: "border-gray-500/20", hex: "#9CA3AF" },
-  gray: { bg: "bg-gray-500/10", text: "text-gray-400", border: "border-gray-500/20", hex: "#9CA3AF" },
-  Red: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20", hex: "#EF4444" },
-  red: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20", hex: "#EF4444" },
-  Indigo: { bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20", hex: "#6366F1" },
-  indigo: { bg: "bg-indigo-500/10", text: "text-indigo-400", border: "border-indigo-500/20", hex: "#6366F1" },
-  Teal: { bg: "bg-teal-500/10", text: "text-teal-400", border: "border-teal-500/20", hex: "#14B8A6" },
-  teal: { bg: "bg-teal-500/10", text: "text-teal-400", border: "border-teal-500/20", hex: "#14B8A6" },
-  Yellow: { bg: "bg-yellow-500/10", text: "text-yellow-400", border: "border-yellow-500/20", hex: "#EAB308" },
-  yellow: { bg: "bg-yellow-500/10", text: "text-yellow-400", border: "border-yellow-500/20", hex: "#EAB308" },
+// Dictionary mapping icon_key to React Icons components
+const ICON_MAP = {
+  food: FiIcons.FiCoffee,
+  coffee: FiIcons.FiCoffee,
+  shopping: FiIcons.FiShoppingBag,
+  bills: FiIcons.FiDollarSign,
+  travel: FiIcons.FiMapPin,
+  car: FiIcons.FiCompass,
+  fuel: FiIcons.FiCompass,
+  health: FiIcons.FiActivity,
+  medicine: FiIcons.FiActivity,
+  movie: FiIcons.FiTv,
+  gift: FiIcons.FiGift,
+  home: FiIcons.FiHome,
+  education: FiIcons.FiBookOpen,
+  pets: FiIcons.FiHeart,
+  investment: FiIcons.FiDollarSign,
+  salary: FiIcons.FiBriefcase,
+  freelance: FiIcons.FiBriefcase,
+  tax: FiIcons.FiPercent,
+  subscriptions: FiIcons.FiPlayCircle,
+  others: FiIcons.FiFolder
 };
 
-// React-icons mapping for category identifiers
-export const ICON_MAP = {
-  Food: FiCoffee,
-  utensils: FiCoffee,
-  Transport: FiCompass,
-  compass: FiCompass,
-  Shopping: FiShoppingBag,
-  "shopping-bag": FiShoppingBag,
-  Entertainment: FiTv,
-  tv: FiTv,
-  Health: FiActivity,
-  activity: FiActivity,
-  Others: FiFolder,
-  folder: FiFolder,
-  Books: FiBookOpen,
-  book: FiBookOpen,
-  Gift: FiGift,
-  gift: FiGift,
-  Heart: FiHeart,
-  heart: FiHeart,
-  Coffee: FiCoffee,
-  coffee: FiCoffee,
-  Travel: FiMapPin,
-  travel: FiMapPin,
-  Gaming: FiPlayCircle,
-  gaming: FiPlayCircle,
-  Finance: FiDollarSign,
-  dollar: FiDollarSign,
+// Dictionary mapping icon_key to visual emojis
+const EMOJI_MAP = {
+  food: "🍔",
+  coffee: "☕",
+  shopping: "🛍",
+  bills: "💡",
+  subscriptions: "📺",
+  travel: "✈",
+  car: "🚗",
+  fuel: "⛽",
+  health: "🏥",
+  medicine: "💊",
+  movie: "🎬",
+  gift: "🎁",
+  home: "🏠",
+  education: "🎓",
+  pets: "🐶",
+  investment: "📈",
+  salary: "💼",
+  freelance: "💻",
+  tax: "🧾",
+  others: "📦"
 };
 
-// Resolve category styles dynamically
-export const getCategoryStyles = (colorName) => {
-  return COLOR_PALETTE[colorName] || COLOR_PALETTE.gray;
+/**
+ * Resolves a React Icon component from an icon_key.
+ * @param {string} iconKey
+ * @returns {React.Component}
+ */
+export const getCategoryIcon = (iconKey) => {
+  if (!iconKey) return FiIcons.FiFolder;
+  const key = String(iconKey).toLowerCase().trim();
+  return ICON_MAP[key] || FiIcons.FiFolder;
 };
 
-// Resolve category icon component dynamically
-export const getCategoryIcon = (iconName) => {
-  return ICON_MAP[iconName] || FiFolder;
+/**
+ * Resolves an emoji string from an icon_key.
+ * @param {string} iconKey
+ * @returns {string}
+ */
+export const getCategoryEmoji = (iconKey) => {
+  if (!iconKey) return "📦";
+  const key = String(iconKey).toLowerCase().trim();
+  return EMOJI_MAP[key] || "📦";
 };
 
-// Backward compatibility helper mapping names to styles
-export const CATEGORY_COLORS = {
-  Food: COLOR_PALETTE.Green,
-  Transport: COLOR_PALETTE.Blue,
-  Shopping: COLOR_PALETTE.Purple,
-  Entertainment: COLOR_PALETTE.Orange,
-  Health: COLOR_PALETTE.Pink,
-  Others: COLOR_PALETTE.Gray,
+/**
+ * Resolves styling classes based on colorHex.
+ * @param {string} colorHex
+ * @returns {Object}
+ */
+export const getCategoryStyles = (colorHex) => {
+  const hex = colorHex || "#94A3B8";
+  
+  const palettes = {
+    "#4f46e5": { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200" },
+    "#3b82f6": { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+    "#0ea5e9": { bg: "bg-sky-50", text: "text-sky-600", border: "border-sky-200" },
+    "#06b6d4": { bg: "bg-cyan-50", text: "text-cyan-600", border: "border-cyan-200" },
+    "#10b981": { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+    "#22c55e": { bg: "bg-green-50", text: "text-green-600", border: "border-green-200" },
+    "#84cc16": { bg: "bg-lime-50", text: "text-lime-600", border: "border-lime-200" },
+    "#f59e0b": { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200" },
+    "#f97316": { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
+    "#f43f5e": { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-200" },
+    "#ec4899": { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-200" },
+    "#64748b": { bg: "bg-slate-50", text: "text-slate-500", border: "border-slate-200" },
+    // Names compatibility mapping
+    "indigo": { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-200" },
+    "blue": { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-200" },
+    "sky": { bg: "bg-sky-50", text: "text-sky-600", border: "border-sky-200" },
+    "cyan": { bg: "bg-cyan-50", text: "text-cyan-600", border: "border-cyan-200" },
+    "emerald": { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+    "green": { bg: "bg-green-50", text: "text-green-600", border: "border-green-200" },
+    "lime": { bg: "bg-lime-50", text: "text-lime-600", border: "border-lime-200" },
+    "amber": { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-200" },
+    "orange": { bg: "bg-orange-50", text: "text-orange-600", border: "border-orange-200" },
+    "rose": { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-200" },
+    "pink": { bg: "bg-pink-50", text: "text-pink-600", border: "border-pink-200" },
+    "slate": { bg: "bg-slate-50", text: "text-slate-500", border: "border-slate-200" }
+  };
+  
+  const matched = palettes[hex.toLowerCase()];
+  if (matched) {
+    return { ...matched, hex };
+  }
+  
+  return {
+    bg: "bg-slate-50",
+    text: "text-slate-600",
+    border: "border-slate-200",
+    hex
+  };
+};
+
+/**
+ * Resolves chart colors based on colorHex.
+ * @param {string} colorHex
+ * @returns {string}
+ */
+export const getCategoryChartColor = (colorHex) => {
+  return colorHex || "#94A3B8";
 };

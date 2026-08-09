@@ -12,7 +12,7 @@ import CustomTooltip from "./CustomTooltip";
 
 /**
  * Monthly Spending Chart using Recharts BarChart.
- * Renders bars with rounded corners, gradient violet colors, and glows current month.
+ * Renders bars with rounded corners, indigo primary/accent colors.
  */
 export default function MonthlySpendingChart({ data = [] }) {
   // Format numbers for Y-axis
@@ -23,30 +23,17 @@ export default function MonthlySpendingChart({ data = [] }) {
   };
 
   return (
-    <div className="w-full h-[320px] sm:h-[360px]">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="w-full h-[320px]">
+      <ResponsiveContainer width="100%" height={320}>
         <BarChart
           data={data}
-          margin={{ top: 20, right: 5, left: -10, bottom: 5 }}
+          margin={{ top: 16, right: 8, left: -8, bottom: 8 }}
         >
-          <defs>
-            {/* Standard gradient */}
-            <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#A855F7" />
-              <stop offset="100%" stopColor="#6B21A8" />
-            </linearGradient>
-            
-            {/* Highlight current month gradient */}
-            <linearGradient id="currentBarGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#C084FC" />
-              <stop offset="100%" stopColor="#8B5CF6" />
-            </linearGradient>
-          </defs>
-
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="rgba(255, 255, 255, 0.03)"
+            stroke="#E5E7EB"
             vertical={false}
+            opacity={0.6}
           />
 
           <XAxis
@@ -71,24 +58,23 @@ export default function MonthlySpendingChart({ data = [] }) {
 
           <Tooltip
             content={<CustomTooltip type="monthly" />}
-            cursor={{ fill: "rgba(255, 255, 255, 0.02)", radius: [8, 8, 0, 0] }}
+            cursor={{ fill: "rgba(91, 76, 240, 0.03)", radius: [6, 6, 0, 0] }}
           />
 
           <Bar
             dataKey="total_spent"
-            radius={[8, 8, 0, 0]}
-            animationDuration={1200}
+            radius={[6, 6, 0, 0]}
+            animationDuration={800}
             animationEasing="ease-out"
+            barSize={32}
           >
             {data.map((entry, index) => {
               const isCurrent = entry.is_current_month;
               return (
                 <Cell
                   key={`cell-${index}`}
-                  fill={isCurrent ? "url(#currentBarGradient)" : "url(#barGradient)"}
-                  style={{
-                    filter: isCurrent ? "drop-shadow(0px 0px 8px rgba(168, 85, 247, 0.5))" : "none",
-                  }}
+                  fill={isCurrent ? "#5B4CF0" : "#C7D2FE"}
+                  className="hover:opacity-90 transition-opacity cursor-pointer"
                 />
               );
             })}

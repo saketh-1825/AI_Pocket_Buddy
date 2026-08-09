@@ -51,3 +51,21 @@ class AnalyticsTrendsResponse(BaseModel):
     month_over_month: float
     trend_chart: List[TrendChartPoint]
     category_breakdown: List[CategorySummary]
+
+
+class HeatmapItem(BaseModel):
+    day: str
+    hour: int
+    amount: float
+
+class AnalyticsHeatmapResponse(BaseModel):
+    heatmap: List[HeatmapItem]
+
+class RunningBalanceItem(BaseModel):
+    date: str
+    amount: float
+    running_balance: float
+
+class AnalyticsRunningBalanceResponse(BaseModel):
+    running_balance: List[RunningBalanceItem]
+

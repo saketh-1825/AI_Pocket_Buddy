@@ -20,10 +20,9 @@ async def create_expense(
     expense: ExpenseCreate,
     current_user: dict = Depends(get_current_user)
 ):
-
     expense_dict = expense.model_dump()
-
     expense_dict["user_id"] = str(current_user["_id"])
+    expense_dict["category_id"] = ObjectId(expense_dict["category_id"])
     expense_dict["created_at"] = datetime.now(timezone.utc)
 
     result = await expense_collection.insert_one(expense_dict)
@@ -35,20 +34,19 @@ async def create_expense(
 
 @router.get("/expenses", response_model=List[ExpenseResponse])
 async def get_expenses(
-    category: Optional[str] = None,
+    category_id: Optional[str] = None,
     min_amount: Optional[float] = None,
     max_amount: Optional[float] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
     current_user: dict = Depends(get_current_user)
 ):
-
     query = {
         "user_id": str(current_user["_id"])
     }
 
-    if category:
-        query["category"] = category
+    if category_id:
+        query["category_id"] = ObjectId(category_id)
 
     if min_amount or max_amount:
         query["amount"] = {}
@@ -81,7 +79,6 @@ async def update_expense(
     expense: ExpenseUpdate,
     current_user: dict = Depends(get_current_user)
 ):
-
     existing_expense = await expense_collection.find_one({
         "_id": ObjectId(expense_id),
         "user_id": str(current_user["_id"])
@@ -94,6 +91,8 @@ async def update_expense(
         )
 
     update_data = expense.model_dump(exclude_none=True)
+    if "category_id" in update_data:
+        update_data["category_id"] = ObjectId(update_data["category_id"])
 
     await expense_collection.update_one(
         {"_id": ObjectId(expense_id)},
@@ -109,7 +108,6 @@ async def delete_expense(
     expense_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-
     result = await expense_collection.delete_one({
         "_id": ObjectId(expense_id),
         "user_id": str(current_user["_id"])

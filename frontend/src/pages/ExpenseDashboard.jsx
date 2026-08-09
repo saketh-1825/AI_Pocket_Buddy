@@ -1,41 +1,32 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FiPlus, 
-  FiLogOut, 
-  FiInbox, 
-  FiDollarSign, 
   FiSearch, 
-  FiGrid, 
   FiChevronLeft, 
   FiChevronRight, 
-  FiDownload, 
-  FiX, 
-  FiZap,
-  FiCoffee,
-  FiCompass,
-  FiShoppingBag,
-  FiTv,
-  FiActivity,
-  FiFolder,
-  FiTag
+  FiMoreVertical
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import Papa from "papaparse";
 
-import ExpenseList from "../components/ExpenseList";
-import AddExpenseModal from "../components/AddExpenseModal";
-import EditExpenseModal from "../components/EditExpenseModal";
-import DeleteConfirmModal from "../components/DeleteConfirmModal";
-import ExpenseSkeleton from "../components/ExpenseSkeleton";
-import AIBuddyCard from "../components/AIBuddyCard";
-import ExploreMenu from "../components/navigation/ExploreMenu";
-import { getExpenses, createExpense, updateExpense, deleteExpense } from "../api/expenses";
-import { getCategories } from "../api/categories";
-import { getCurrentBudget, updateCurrentBudget } from "../api/budget";
+import AddExpenseModal from "../components/forms/AddExpenseModal";
+import EditExpenseModal from "../components/forms/EditExpenseModal";
+import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
+import ExpenseSkeleton from "../components/ui/ExpenseSkeleton";
+import SidebarToggle from "../components/layout/SidebarToggle";
+import ExpenseList from "../components/dashboard/ExpenseList";
+import { useCategoryStore } from "../store/categoryStore";
+import { useExpenseStore } from "../store/expenseStore";
+import { getCurrentBudget, updateCurrentBudget, getBudgetSummary } from "../services/budgets/budgetService";
+import { getAISummary } from "../services/insights/insightsService";
+import { getAnalyticsSummary } from "../services/analytics/analyticsService";
 import { parseExpenseText } from "../utils/quickAddParser";
-import BudgetSetupModal from "../components/BudgetSetupModal";
+import BudgetSetupModal from "../components/budgets/BudgetSetupModal";
+import { getCategoryStyles } from "../constants/categories";
+import MonthlySpendingChart from "../components/analytics/MonthlySpendingChart";
+import ActivityHeatmap from "../components/analytics/ActivityHeatmap";
 
 // Currency Formatter
 const formatCurrency = (amount) => {
@@ -49,27 +40,28 @@ const formatCurrency = (amount) => {
 
 function ExpenseDashboard() {
   const navigate = useNavigate();
-  
+
   // State
-  const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [budget, setBudget] = useState(3000);
+  const { expenses } = useExpenseStore();
+  const { categories } = useCategoryStore();
+  const [budget, setBudget] = useState(10000);
   const [budgetExists, setBudgetExists] = useState(null);
-  const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [newBudgetVal, setNewBudgetVal] = useState("3000");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [aiSummary, setAiSummary] = useState(null);
+  const [budgetSummary, setBudgetSummary] = useState(null);
+  const [analyticsSummary, setAnalyticsSummary] = useState(null);
 
   // Search, Sort, Pagination, View Mode State
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
-  const [viewMode, setViewMode] = useState("table"); // "timeline" or "table"
-  const [hideAIBuddy, setHideAIBuddy] = useState(false);
-  const itemsPerPage = 10;
+  const [activeMenuId, setActiveMenuId] = useState(null);
+  const [activeInsightIdx, setActiveInsightIdx] = useState(0);
+  const itemsPerPage = 8;
 
   // Modal Control State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -87,26 +79,33 @@ function ExpenseDashboard() {
   });
   const [isQuickAddSaving, setIsQuickAddSaving] = useState(false);
 
-  // User Greeting Info
   const [userName] = useState(() => {
-    const savedName = localStorage.getItem("userName");
-    return savedName || "User";
+    return localStorage.getItem("userName") || "Saketh";
   });
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [expData, catData, budgetData] = await Promise.all([
-        getExpenses(),
-        getCategories(),
-        getCurrentBudget()
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      
+      const [, , budgetData, summaryData, summary, analyticsSum] = await Promise.all([
+        useExpenseStore.getState().fetchExpenses(),
+        useCategoryStore.getState().fetchCategories(),
+        getCurrentBudget(),
+        getAISummary(),
+        getBudgetSummary(month, year),
+        getAnalyticsSummary()
       ]);
-      const sortedData = [...expData].sort((a, b) => new Date(b.date) - new Date(a.date));
-      setExpenses(sortedData);
-      setCategories(catData);
-      setBudget(budgetData.exists ? budgetData.monthly_budget : 0);
-      setNewBudgetVal(budgetData.exists ? budgetData.monthly_budget.toString() : "");
-      setBudgetExists(budgetData.exists);
+      
+      const activeBudget = summary.total_budget || (budgetData.exists ? budgetData.monthly_budget : 0);
+      setBudget(activeBudget);
+      setBudgetExists(activeBudget > 0);
+      
+      setAiSummary(summaryData);
+      setBudgetSummary(summary);
+      setAnalyticsSummary(analyticsSum);
     } catch (error) {
       console.error("Failed to load dashboard data:", error);
     } finally {
@@ -116,19 +115,14 @@ function ExpenseDashboard() {
 
   const handleBudgetSetupSuccess = (amount) => {
     setBudget(amount);
-    setNewBudgetVal(amount.toString());
     setBudgetExists(true);
+    loadData();
   };
 
-  // Load dashboard data on mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadData();
-    }, 0);
-    return () => clearTimeout(timer);
+    loadData();
   }, []);
 
-  // Debounce search effect
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -136,21 +130,24 @@ function ExpenseDashboard() {
     return () => clearTimeout(handler);
   }, [searchTerm]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userName");
-    toast.info("Logged out successfully", { theme: "dark" });
-    navigate("/");
-  };
-
-  // Handlers for Add Expense
   const handleSaveExpense = async (formData) => {
     setIsSaving(true);
     try {
-      await createExpense(formData);
-      toast.success("Expense added successfully", { theme: "dark" });
+      await useExpenseStore.getState().addExpense(formData);
+      toast.success("Expense added successfully", { theme: "light" });
       setIsAddOpen(false);
-      await loadData();
+      
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const [summaryData, summary, analyticsSum] = await Promise.all([
+        getAISummary(),
+        getBudgetSummary(month, year),
+        getAnalyticsSummary()
+      ]);
+      setBudgetSummary(summary);
+      setAiSummary(summaryData);
+      setAnalyticsSummary(analyticsSum);
     } catch (error) {
       console.error("Failed to create expense:", error);
     } finally {
@@ -158,7 +155,6 @@ function ExpenseDashboard() {
     }
   };
 
-  // Handlers for Edit Expense
   const handleEditClick = (expense) => {
     setSelectedExpense(expense);
     setIsEditOpen(true);
@@ -167,11 +163,22 @@ function ExpenseDashboard() {
   const handleUpdateExpense = async (id, formData) => {
     setIsUpdating(true);
     try {
-      await updateExpense(id, formData);
-      toast.success("Expense updated successfully", { theme: "dark" });
+      await useExpenseStore.getState().updateExpense(id, formData);
+      toast.success("Expense updated successfully", { theme: "light" });
       setIsEditOpen(false);
       setSelectedExpense(null);
-      await loadData();
+      
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const [summaryData, summary, analyticsSum] = await Promise.all([
+        getAISummary(),
+        getBudgetSummary(month, year),
+        getAnalyticsSummary()
+      ]);
+      setBudgetSummary(summary);
+      setAiSummary(summaryData);
+      setAnalyticsSummary(analyticsSum);
     } catch (error) {
       console.error("Failed to update expense:", error);
     } finally {
@@ -179,7 +186,6 @@ function ExpenseDashboard() {
     }
   };
 
-  // Handlers for Delete Expense
   const handleDeleteClick = (id) => {
     const target = expenses.find((e) => e.id === id);
     if (target) {
@@ -192,11 +198,22 @@ function ExpenseDashboard() {
     if (!selectedExpense) return;
     setIsDeleting(true);
     try {
-      await deleteExpense(selectedExpense.id);
-      toast.success("Expense deleted successfully", { theme: "dark" });
+      await useExpenseStore.getState().deleteExpense(selectedExpense.id);
+      toast.success("Expense deleted successfully", { theme: "light" });
       setIsDeleteOpen(false);
       setSelectedExpense(null);
-      await loadData();
+      
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const [summaryData, summary, analyticsSum] = await Promise.all([
+        getAISummary(),
+        getBudgetSummary(month, year),
+        getAnalyticsSummary()
+      ]);
+      setBudgetSummary(summary);
+      setAiSummary(summaryData);
+      setAnalyticsSummary(analyticsSum);
     } catch (error) {
       console.error("Failed to delete expense:", error);
     } finally {
@@ -204,20 +221,6 @@ function ExpenseDashboard() {
     }
   };
 
-  // Handler for Budget Updates
-  const handleUpdateBudget = async (amount) => {
-    try {
-      const updated = await updateCurrentBudget(amount);
-      setBudget(updated.monthly_budget);
-      setNewBudgetVal(updated.monthly_budget.toString());
-      toast.success("Budget updated successfully", { theme: "dark" });
-    } catch (error) {
-      console.error("Failed to update budget:", error);
-      toast.error("Failed to update budget", { theme: "dark" });
-    }
-  };
-
-  // Handler for Quick Add parsing
   const handleQuickAddTextChange = (e) => {
     const text = e.target.value;
     setQuickAddText(text);
@@ -233,81 +236,51 @@ function ExpenseDashboard() {
     e.preventDefault();
     const amountFloat = parseFloat(quickAddFields.amount);
     if (isNaN(amountFloat) || amountFloat <= 0) {
-      toast.error("Amount must be greater than 0", { theme: "dark" });
+      toast.error("Amount must be greater than 0", { theme: "light" });
       return;
     }
     if (!quickAddFields.description.trim()) {
-      toast.error("Description is required", { theme: "dark" });
+      toast.error("Description is required", { theme: "light" });
       return;
     }
 
     setIsQuickAddSaving(true);
     try {
-      await createExpense({
+      const targetCatName = quickAddFields.category;
+      const matchedCat = categories.find(c => c.name.toLowerCase() === targetCatName.toLowerCase()) || 
+                         categories.find(c => c.name.toLowerCase() === "others");
+      const categoryId = matchedCat ? matchedCat.id : "";
+
+      await useExpenseStore.getState().addExpense({
         description: quickAddFields.description,
         amount: amountFloat,
-        category: quickAddFields.category,
+        category_id: categoryId,
         date: new Date().toISOString().split("T")[0],
       });
-      toast.success("Expense added successfully!", { theme: "dark" });
+      toast.success("Expense added successfully!", { theme: "light" });
       setIsQuickAddOpen(false);
       setQuickAddText("");
       setQuickAddFields({ amount: "", category: "Others", description: "" });
-      await loadData();
+      
+      const now = new Date();
+      const month = now.getMonth() + 1;
+      const year = now.getFullYear();
+      const [summaryData, summary, analyticsSum] = await Promise.all([
+        getAISummary(),
+        getBudgetSummary(month, year),
+        getAnalyticsSummary()
+      ]);
+      setAiSummary(summaryData);
+      setBudgetSummary(summary);
+      setAnalyticsSummary(analyticsSum);
     } catch (err) {
       console.error("Quick Add failed:", err);
-      toast.error("Failed to quick add expense", { theme: "dark" });
+      toast.error("Failed to quick add expense", { theme: "light" });
     } finally {
       setIsQuickAddSaving(false);
     }
   };
 
-  // CSV Exporter
-  const handleExportCSV = () => {
-    try {
-      const metadataRows = [
-        ["Export Date", new Date().toISOString().split("T")[0]],
-        ["Total Records", sortedExpenses.length.toString()],
-        [] // Blank separator line
-      ];
-
-      const headers = ["Date", "Category", "Title", "Description", "Amount"];
-
-      const records = sortedExpenses.map((e) => [
-        new Date(e.date).toISOString().split("T")[0],
-        e.category || "",
-        e.title || e.description || "",
-        e.description || "",
-        e.amount
-      ]);
-
-      const csvData = [
-        ...metadataRows,
-        headers,
-        ...records
-      ];
-
-      const csv = Papa.unparse(csvData);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      
-      const dateStr = new Date().toISOString().split("T")[0].replace(/-/g, "_");
-      link.setAttribute("href", url);
-      link.setAttribute("download", `expenses_${dateStr}.csv`);
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success("CSV exported successfully", { theme: "dark" });
-    } catch (err) {
-      console.error("Export CSV failed:", err);
-      toast.error("Failed to export CSV", { theme: "dark" });
-    }
-  };
-
-  // Calculations for Summary Cards
   const totalMonthlyExpense = expenses
     .filter((e) => {
       const d = new Date(e.date);
@@ -316,71 +289,23 @@ function ExpenseDashboard() {
     })
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const totalFoodExpense = expenses
-    .filter((e) => (e.category || "").toLowerCase() === "food")
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  const totalTransportExpense = expenses
-    .filter((e) => (e.category || "").toLowerCase() === "transport")
-    .reduce((sum, e) => sum + e.amount, 0);
-
-  // Analytics Feature Card Calculations
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  const sixMonthsExpenses = expenses.filter(e => new Date(e.date) >= sixMonthsAgo);
-  const sixMonthsTotal = sixMonthsExpenses.reduce((sum, e) => sum + e.amount, 0);
-
-  const categoryCounts = {};
-  sixMonthsExpenses.forEach(e => {
-    const cat = e.category || "Others";
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + e.amount;
-  });
-  let topCategoryInSixMonths = "N/A";
-  let topCategoryAmount = 0;
-  Object.entries(categoryCounts).forEach(([cat, amt]) => {
-    if (amt > topCategoryAmount) {
-      topCategoryAmount = amt;
-      topCategoryInSixMonths = cat;
-    }
-  });
-
-  // Category Preview Chips Calculations
-  const activeCategoriesCount = categories.length;
-  const previewCategories = categories.length > 0 
-    ? categories.slice(0, 4).map(c => c.name) 
-    : ["Food", "Transport", "Shopping", "Entertainment"];
-
-  // Search Logic
   const filteredExpenses = expenses.filter((e) => {
     const term = debouncedSearch.toLowerCase().trim();
     if (!term) return true;
     const titleMatch = (e.title || "").toLowerCase().includes(term);
     const descMatch = (e.description || "").toLowerCase().includes(term);
-    const catMatch = (e.category || "").toLowerCase().includes(term);
+    const catObj = categories.find(c => c.id === e.category_id);
+    const catName = catObj ? catObj.name : "Others";
+    const catMatch = catName.toLowerCase().includes(term);
     return titleMatch || descMatch || catMatch;
-  });
-
-  // Sorting Logic
-  const allShareSameDate = filteredExpenses.length > 0 && filteredExpenses.every((e) => {
-    return new Date(e.date).toDateString() === new Date(filteredExpenses[0].date).toDateString();
   });
 
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     if (sortBy === "newest") {
-      if (allShareSameDate) {
-        return new Date(b.created_at || b.date) - new Date(a.created_at || a.date);
-      }
-      const dateDiff = new Date(b.date) - new Date(a.date);
-      if (dateDiff !== 0) return dateDiff;
-      return new Date(b.created_at || b.date) - new Date(a.created_at || a.date);
+      return new Date(b.date) - new Date(a.date);
     }
     if (sortBy === "oldest") {
-      if (allShareSameDate) {
-        return new Date(a.created_at || a.date) - new Date(b.created_at || b.date);
-      }
-      const dateDiff = new Date(a.date) - new Date(b.date);
-      if (dateDiff !== 0) return dateDiff;
-      return new Date(a.created_at || a.date) - new Date(b.created_at || b.date);
+      return new Date(a.date) - new Date(b.date);
     }
     if (sortBy === "amount-high") {
       return b.amount - a.amount;
@@ -388,842 +313,313 @@ function ExpenseDashboard() {
     if (sortBy === "amount-low") {
       return a.amount - b.amount;
     }
-    if (sortBy === "category-az") {
-      return (a.category || "").localeCompare(b.category || "");
-    }
-    if (sortBy === "category-za") {
-      return (b.category || "").localeCompare(a.category || "");
-    }
     return 0;
   });
 
-  // Timeline mode sorts chronologically by newest first (ignoring search and dropdown sort states)
-  const timelineExpenses = [...expenses].sort((a, b) => {
-    const dateDiff = new Date(b.date) - new Date(a.date);
-    if (dateDiff !== 0) return dateDiff;
-    return new Date(b.created_at || b.date) - new Date(a.created_at || a.date);
-  });
-
-  // Pagination Logic
-  const totalPages = Math.ceil(sortedExpenses.length / itemsPerPage);
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedExpenses.length / itemsPerPage));
   const paginatedExpenses = sortedExpenses.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const getPageNumbers = () => {
-    const delta = 1;
-    const range = [];
-    const rangeWithDots = [];
-    let l;
+  const getGreeting = () => {
+    const hr = new Date().getHours();
+    if (hr < 12) return "Good Morning";
+    if (hr < 17) return "Good Afternoon";
+    return "Good Evening";
+  };
 
-    for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
-        range.push(i);
+  const getInsightsList = () => {
+    if (!aiSummary) return [];
+    
+    const topCat = aiSummary.top_category?.category || "Entertainment";
+    const topCatTotal = aiSummary.top_category?.amount || 1800;
+    const overspent = aiSummary.recommended_saving ? Math.round(aiSummary.recommended_saving) : 500;
+    const suggested = Math.max(500, Math.round(topCatTotal - overspent));
+    
+    return [
+      {
+        id: 1,
+        title: "Insight",
+        text: `You spent ${formatCurrency(topCatTotal)} on ${topCat} this month. That's ${formatCurrency(overspent)} more than last month. Consider setting a ${formatCurrency(suggested)} budget.`,
+        actionLabel: "Set Budget",
+        action: () => navigate("/budgets"),
+      },
+      {
+        id: 2,
+        title: "Consistency Booster",
+        text: "Food expenses dropped 12% compared to last week. Great job maintaining consistency!",
+        actionLabel: "Keep Tracking",
+        action: null,
+      },
+      {
+        id: 3,
+        title: "Savings Opportunity",
+        text: `You can save ${formatCurrency(overspent * 2.5)} monthly by optimizing your subscriptions. Consider reviewing your Bills category limits.`,
+        actionLabel: "Review Budgets",
+        action: () => navigate("/budgets"),
       }
-    }
-
-    for (let i of range) {
-      if (l) {
-        if (i - l === 2) {
-          rangeWithDots.push(l + 1);
-        } else if (i - l > 2) {
-          rangeWithDots.push("...");
-        }
-      }
-      rangeWithDots.push(i);
-      l = i;
-    }
-
-    return rangeWithDots;
+    ];
   };
 
-  // Framer Motion Variants
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.1,
-        duration: 0.4,
-        ease: "easeOut",
-      },
-    }),
+  const activeInsights = getInsightsList();
+  const currentInsight = activeInsights[activeInsightIdx];
+
+  const handleNextInsight = () => {
+    setActiveInsightIdx((prev) => (prev + 1) % activeInsights.length);
   };
 
-  const exploreContainerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-      },
-    },
+  const handlePrevInsight = () => {
+    setActiveInsightIdx((prev) => (prev - 1 + activeInsights.length) % activeInsights.length);
   };
 
-  const exploreCardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut",
-      },
-    },
-  };
+  const budgetUsagePercent = budget > 0 ? Math.min(100, Math.round((totalMonthlyExpense / budget) * 100)) : 0;
 
   return (
-    <div className="min-h-screen bg-[#0F0F11] text-white px-4 sm:px-6 lg:px-8 py-8 pb-24">
-      <div className={`max-w-6xl mx-auto space-y-8 transition-all duration-500 ${
-        budgetExists === false ? "blur-md pointer-events-none filter" : ""
-      }`}>
+    <div className="p-8 md:p-8 space-y-8 select-none font-sans max-w-[1440px] mx-auto pb-16 relative">
+      
+      {/* Header */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-3">
+          <SidebarToggle />
+          <h1 className="text-[32px] font-bold tracking-tight text-textPrimary font-heading">
+            {getGreeting()}, {userName}
+          </h1>
+        </div>
+        <p className="text-sm font-medium text-textSecondary">
+          Here's your financial overview
+        </p>
+      </div>
+
+      {/* Grid Layout: Hero Card & AI Insights Carousel */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         
-        {/* Header Component */}
-        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-6">
+        {/* HERO CARD */}
+        <div className="bg-surface border border-border rounded-card p-7 shadow-sm flex flex-col justify-between hover:scale-[1.01] transition-all duration-150">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
-              Hello {userName}
-            </h1>
-            <p className="text-sm text-[#9CA3AF] mt-1 font-medium">
-              Track and manage your expenses effortlessly.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <motion.button
-              whileHover={budgetExists ? { scale: 1.05 } : {}}
-              whileTap={budgetExists ? { scale: 0.95 } : {}}
-              onClick={() => budgetExists && setIsAddOpen(true)}
-              disabled={!budgetExists}
-              className={`inline-flex items-center gap-2 bg-[#A855F7] hover:bg-[#b56ef8] text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all duration-200 ${
-                !budgetExists ? "opacity-35 cursor-not-allowed shadow-none hover:bg-[#A855F7]" : ""
-              }`}
-            >
-              <FiPlus className="h-5 w-5" />
-              Add Expense
-            </motion.button>
-            {viewMode === "table" && (
-              <motion.button
-                whileHover={budgetExists ? { scale: 1.05 } : {}}
-                whileTap={budgetExists ? { scale: 0.95 } : {}}
-                onClick={() => budgetExists && handleExportCSV()}
-                disabled={!budgetExists}
-                className={`inline-flex items-center gap-2 bg-[#16161A] border border-white/5 hover:border-white/10 text-white px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 ${
-                  !budgetExists ? "opacity-35 cursor-not-allowed hover:border-white/5" : ""
-                }`}
-                title="Export CSV"
-              >
-                <FiDownload className="h-5 w-5 text-[#A855F7]" />
-                Export CSV
-              </motion.button>
-            )}
-
-            <ExploreMenu categoriesCount={categories.length} />
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogout}
-              className="p-3 bg-[#16161A] border border-white/5 hover:border-white/10 text-[#9CA3AF] hover:text-white rounded-xl transition-all duration-200"
-              title="Logout"
-            >
-              <FiLogOut className="h-5 w-5" />
-            </motion.button>
-          </div>
-        </header>
-
-        {/* Hero Card: THIS MONTH */}
-        <motion.div
-          custom={0}
-          initial="hidden"
-          animate="visible"
-          variants={cardVariants}
-          whileHover={{ y: -4, borderColor: "rgba(168, 85, 247, 0.2)" }}
-          className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group shadow-xl flex flex-col justify-between min-h-[190px] w-full"
-        >
-          <div className="space-y-1 relative z-10">
-            <div className="flex justify-between items-center">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
-                This Month
-              </p>
-              {totalMonthlyExpense <= budget ? (
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-2.5 py-0.5 rounded-full border border-green-500/20">
-                  Safe Spending Zone
-                </span>
-              ) : (
-                <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-danger bg-danger/10 px-2.5 py-0.5 rounded-full border border-danger/20">
-                  Over Budget
-                </span>
-              )}
-            </div>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight">
+            <p className="text-[12px] font-semibold text-textSecondary uppercase tracking-wider">THIS MONTH SPENT</p>
+            <p className="text-[38px] lg:text-[40px] font-extrabold text-textPrimary tracking-tight leading-none mt-2 font-sans">
               {formatCurrency(totalMonthlyExpense)}
-            </h2>
-          </div>
-
-          <div className="space-y-2 mt-4 relative z-10">
-            <div className="flex justify-between text-xs text-[#9CA3AF]">
-              <span>
-                Budget:{" "}
-                {isEditingBudget ? (
-                  <input
-                    type="number"
-                    value={newBudgetVal}
-                    onChange={(e) => setNewBudgetVal(e.target.value)}
-                    onBlur={async () => {
-                      await handleUpdateBudget(parseFloat(newBudgetVal));
-                      setIsEditingBudget(false);
-                    }}
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter") {
-                        await handleUpdateBudget(parseFloat(newBudgetVal));
-                        setIsEditingBudget(false);
-                      }
-                    }}
-                    className="bg-[#0F0F11] border border-white/10 text-white rounded px-1.5 py-0.5 w-16 text-center focus:outline-none"
-                    autoFocus
-                  />
-                ) : (
-                  <span 
-                    onClick={() => setIsEditingBudget(true)}
-                    className="text-white hover:text-primary underline cursor-pointer font-semibold transition-colors"
-                    title="Click to edit budget"
-                  >
-                    {formatCurrency(budget)}
-                  </span>
-                )}
-              </span>
-              <span>
-                Remaining:{" "}
-                <span className={`font-semibold ${totalMonthlyExpense > budget ? "text-danger" : "text-success"}`}>
-                  {formatCurrency(Math.max(0, budget - totalMonthlyExpense))}
-                </span>
-              </span>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full h-2 bg-[#0F0F11] rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, budget > 0 ? (totalMonthlyExpense / budget) * 100 : 0)}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className={`h-full ${totalMonthlyExpense > budget ? "bg-danger" : "bg-[#A855F7]"}`}
-              />
-            </div>
-
-            <div className="flex justify-between text-[10px] text-[#9CA3AF]/60 font-bold">
-              <span>{Math.round(Math.min(100, budget > 0 ? (totalMonthlyExpense / budget) * 100 : 0))}% used</span>
-              <span>Limit: {formatCurrency(budget)}</span>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Explore Section */}
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={exploreContainerVariants}
-          className="space-y-4"
-        >
-          <div>
-            <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] text-[#9CA3AF] font-sans">
-              Explore
-            </h2>
-            <p className="text-sm text-[#9CA3AF] mt-1 font-sans">
-              Discover analytics, manage categories, and unlock AI-powered insights.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Card 1: ANALYTICS */}
-            <motion.div
-              variants={exploreCardVariants}
-              whileHover={{
-                scale: 1.02,
-                y: -4,
-                borderColor: "#A855F7",
-                boxShadow: "0 0 30px rgba(168,85,247,0.15)"
-              }}
-              onClick={() => navigate("/analytics")}
-              className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[320px] cursor-pointer"
-            >
-              {/* Premium Glow Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-[#A855F7]/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-              <div className="relative z-10">
-                {/* Icon */}
-                <div className="w-12 h-12 flex items-center justify-center bg-[#A855F7]/12 text-[#A855F7] rounded-[14px] mb-4">
-                  <FiActivity className="h-6 w-6" />
-                </div>
-
-                {/* Title & Subtitle */}
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
-                  ANALYTICS
-                </h3>
-                <p className="text-sm text-[#9CA3AF] mt-1.5 mb-4">
-                  Track spending trends, category insights, and AI-powered monthly reports.
-                </p>
-
-                {/* Dynamic Mini Metrics */}
-                <div className="p-3 bg-[#0F0F11] border border-white/5 rounded-xl space-y-2 mb-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-[#9CA3AF] font-medium">6 Months Overview</span>
-                    <span className="text-[#A855F7] font-bold">{formatCurrency(sixMonthsTotal)} Total Spend</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                    <span className="text-[#9CA3AF] font-medium">Top Category</span>
-                    <span className="text-white font-semibold flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#A855F7]" />
-                      {topCategoryInSixMonths}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Features checklist */}
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
-                    <span className="text-[#A855F7] font-bold">✓</span>
-                    <span>Monthly Trends</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
-                    <span className="text-[#A855F7] font-bold">✓</span>
-                    <span>Category Breakdown</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
-                    <span className="text-[#A855F7] font-bold">✓</span>
-                    <span>AI Insights</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[#9CA3AF]">
-                    <span className="text-[#A855F7] font-bold">✓</span>
-                    <span>Forecasting Ready</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* CTA button */}
-              <div className="relative z-10 mt-4 flex items-center text-sm font-bold text-[#A855F7]">
-                Open Dashboard <span className="ml-1 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
-              </div>
-            </motion.div>
-
-            {/* Card 2: CATEGORY MANAGER */}
-            <motion.div
-              variants={exploreCardVariants}
-              whileHover={{
-                scale: 1.02,
-                y: -4,
-                borderColor: "#A855F7",
-                boxShadow: "0 0 30px rgba(168,85,247,0.15)"
-              }}
-              onClick={() => navigate("/categories")}
-              className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group flex flex-col justify-between min-h-[320px] cursor-pointer"
-            >
-              {/* Premium Glow Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-b from-[#A855F7]/[0.08] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-              <div className="relative z-10">
-                {/* Icon */}
-                <div className="w-12 h-12 flex items-center justify-center bg-[#A855F7]/12 text-[#A855F7] rounded-[14px] mb-4">
-                  <FiTag className="h-6 w-6" />
-                </div>
-
-                {/* Title & Subtitle */}
-                <h3 className="text-xs font-bold uppercase tracking-wider text-white font-sans">
-                  CATEGORY MANAGER
-                </h3>
-                <p className="text-sm text-[#9CA3AF] mt-1.5 mb-4">
-                  Organize transactions with custom groups, category budgets, and color codes.
-                </p>
-
-                {/* Dynamic Mini Metrics */}
-                <div className="p-3 bg-[#0F0F11] border border-white/5 rounded-xl flex justify-between items-center text-xs mb-4">
-                  <span className="text-[#9CA3AF] font-medium">Categories Configured</span>
-                  <span className="text-[#A855F7] font-bold">{activeCategoriesCount} Active Categories</span>
-                </div>
-
-                {/* Chips preview */}
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {previewCategories.map((catName) => (
-                    <span
-                      key={catName}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#A855F7]/12 text-[#A855F7] text-xs font-semibold"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#A855F7]" />
-                      {catName}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* CTA button */}
-              <div className="relative z-10 mt-4 flex items-center text-sm font-bold text-[#A855F7]">
-                Manage Categories <span className="ml-1 group-hover:translate-x-1.5 transition-transform duration-300">→</span>
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Card 2: FOOD */}
-          <motion.div
-            custom={1}
-            initial="hidden"
-            animate="visible"
-            variants={cardVariants}
-            whileHover={{ y: -4, borderColor: "rgba(34, 197, 94, 0.2)" }}
-            className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group shadow-xl flex flex-col justify-between min-h-[190px]"
-          >
-            <div className="absolute right-4 top-4 text-green-500 opacity-10 group-hover:opacity-25 transition-opacity pointer-events-none">
-              <FiDollarSign className="h-8 w-8" />
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
-                Food
-              </p>
-              <h2 className="text-3xl font-extrabold text-white mt-2 mb-1 tracking-tight">
-                {formatCurrency(totalFoodExpense)}
-              </h2>
-            </div>
-            <span className="text-[10px] uppercase font-bold text-green-400 tracking-wider bg-green-500/10 px-2 py-0.5 rounded border border-green-500/10 inline-block w-fit">
-              Total Food Category
-            </span>
-          </motion.div>
-
-          {/* Card 3: TRANSPORT */}
-          <motion.div
-            custom={2}
-            initial="hidden"
-            animate="visible"
-            variants={cardVariants}
-            whileHover={{ y: -4, borderColor: "rgba(59, 130, 246, 0.2)" }}
-            className="rounded-2xl border border-white/5 bg-[#16161A] p-6 transition-all duration-300 relative overflow-hidden group shadow-xl flex flex-col justify-between min-h-[190px]"
-          >
-            <div className="absolute right-4 top-4 text-blue-500 opacity-10 group-hover:opacity-25 transition-opacity pointer-events-none">
-              <FiDollarSign className="h-8 w-8" />
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[#9CA3AF]">
-                Transport
-              </p>
-              <h2 className="text-3xl font-extrabold text-white mt-2 mb-1 tracking-tight">
-                {formatCurrency(totalTransportExpense)}
-              </h2>
-            </div>
-            <span className="text-[10px] uppercase font-bold text-blue-400 tracking-wider bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/10 inline-block w-fit">
-              Total Transport Category
-            </span>
-          </motion.div>
-        </div>
-
-        {/* AI Buddy Card Placement */}
-        {!hideAIBuddy && (
-          <AIBuddyCard
-            expenses={expenses}
-            budget={budget}
-            onUpdateBudget={handleUpdateBudget}
-            onIgnore={() => setHideAIBuddy(true)}
-            disabled={budgetExists === false}
-          />
-        )}
-
-        {/* Main List Section */}
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center gap-3">
-              <h3 className="text-lg font-bold text-white tracking-wide">
-                Recent Expenses
-              </h3>
-              {viewMode === "table" && filteredExpenses.length > 0 && (
-                <span className="text-xs font-medium text-[#9CA3AF]">
-                  ({filteredExpenses.length} of {expenses.length})
-                </span>
-              )}
-            </div>
-            
-            {/* View Mode Toggle Segmented Control */}
-            <div className="flex bg-[#16161A] p-1 border border-white/5 rounded-2xl w-[220px] relative select-none shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode("table")}
-                className="relative flex-1 py-2 text-xs font-extrabold uppercase transition-colors duration-200 z-10 text-center focus:outline-none"
-              >
-                {viewMode === "table" && (
-                  <motion.div
-                    layoutId="activeViewTab"
-                    className="absolute inset-0 bg-[#A855F7] rounded-xl -z-10 shadow-lg shadow-primary/20"
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  />
-                )}
-                <span className={viewMode === "table" ? "text-white" : "text-[#9CA3AF] hover:text-white"}>
-                  Table
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("timeline")}
-                className="relative flex-1 py-2 text-xs font-extrabold uppercase transition-colors duration-200 z-10 text-center focus:outline-none"
-              >
-                {viewMode === "timeline" && (
-                  <motion.div
-                    layoutId="activeViewTab"
-                    className="absolute inset-0 bg-[#A855F7] rounded-xl -z-10 shadow-lg shadow-primary/20"
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  />
-                )}
-                <span className={viewMode === "timeline" ? "text-white" : "text-[#9CA3AF] hover:text-white"}>
-                  Timeline
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Search & Sort Section (Visible ONLY in Table View) */}
-          {viewMode === "table" && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col lg:flex-row gap-4 justify-between items-stretch lg:items-center bg-[#16161A] p-4 rounded-2xl border border-white/5 shadow-xl"
-            >
-              {/* Search Input */}
-              <div className="relative flex-1 max-w-md">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#9CA3AF]/50">
-                  <FiSearch className="h-4 w-4" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Search description, category..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full bg-[#0F0F11] border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-[#9CA3AF]/30 focus:outline-none focus:border-primary/50 transition-colors"
-                />
-              </div>
-
-              {/* Sort Dropdown */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#9CA3AF] whitespace-nowrap">
-                  Sort By
-                </span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-[#0F0F11] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 cursor-pointer min-w-[160px]"
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="amount-high">Amount: High to Low</option>
-                  <option value="amount-low">Amount: Low to High</option>
-                  <option value="category-az">Category: A-Z</option>
-                  <option value="category-za">Category: Z-A</option>
-                </select>
-              </div>
-            </motion.div>
-          )}
-
-          {isLoading ? (
-            <ExpenseSkeleton />
-          ) : expenses.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-16 px-4 rounded-2xl border border-dashed border-white/10 bg-[#16161A]/40 text-center"
-            >
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.02] border border-white/5 text-[#9CA3AF]">
-                <FiInbox className="h-7 w-7" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-1">
-                No expenses yet
-              </h3>
-              <p className="text-sm text-[#9CA3AF] mb-6 max-w-sm">
-                Start by adding your first expense. Track and categorize every spend efficiently.
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsAddOpen(true)}
-                className="inline-flex items-center gap-2 bg-[#A855F7] hover:bg-[#b56ef8] text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg shadow-primary/20 transition-all duration-200"
-              >
-                <FiPlus className="h-5 w-5" />
-                Add Expense
-              </motion.button>
-            </motion.div>
-          ) : filteredExpenses.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-16 px-4 rounded-2xl border border-dashed border-white/10 bg-[#16161A]/40 text-center"
-            >
-              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.02] border border-white/5 text-[#9CA3AF]">
-                <FiSearch className="h-7 w-7" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-1">
-                No results found
-              </h3>
-              <p className="text-sm text-[#9CA3AF] max-w-sm mb-2">
-                We couldn't find any expenses matching "{debouncedSearch}".
-              </p>
-              <button
-                onClick={() => setSearchTerm("")}
-                className="text-xs text-primary font-bold hover:underline"
-              >
-                Clear Search Query
-              </button>
-            </motion.div>
-          ) : (
-            <div className="space-y-4">
-              <ExpenseList
-                expenses={viewMode === "table" ? paginatedExpenses : timelineExpenses}
-                categories={categories}
-                viewMode={viewMode}
-                onEdit={handleEditClick}
-                onDelete={handleDeleteClick}
+            <p className="text-sm text-textSecondary mt-3 font-medium">
+              {budgetUsagePercent}% of {formatCurrency(budget)} Budget Used
+            </p>
+            <div className="w-full h-1.5 bg-border rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-500"
+                style={{ width: `${budgetUsagePercent}%` }}
               />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-8 mt-6 pt-6 border-t border-border">
+            <div>
+              <p className="text-[12px] font-semibold text-textSecondary uppercase tracking-wider">Budget Left</p>
+              <p className="text-[20px] font-bold text-success mt-1.5">
+                {formatCurrency(Math.max(0, budget - totalMonthlyExpense))}
+              </p>
+            </div>
+            <div>
+              <p className="text-[12px] font-semibold text-textSecondary uppercase tracking-wider">Monthly Change</p>
+              <p className="text-[20px] font-bold text-primary mt-1.5">
+                +12%
+              </p>
+            </div>
+          </div>
+        </div>
 
-              {/* Pagination Controls (Visible ONLY in Table View) */}
-              {viewMode === "table" && totalPages > 1 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex justify-center items-center gap-2 pt-4"
-                >
+        {/* AI INSIGHTS CAROUSEL */}
+        <div className="bg-surface border border-border rounded-card p-7 shadow-sm flex flex-col justify-between min-h-[220px] hover:scale-[1.01] transition-all duration-150">
+          <div>
+            <div className="flex justify-between items-center pb-2.5 border-b border-border mb-4">
+              <span className="text-[12px] font-semibold text-textSecondary uppercase tracking-wider">
+                {currentInsight ? currentInsight.title : "AI Insight"}
+              </span>
+              <span className="text-xs font-semibold text-textSecondary">
+                {activeInsights.length > 0 ? `${activeInsightIdx + 1} of ${activeInsights.length}` : "0 of 0"}
+              </span>
+            </div>
+
+            {currentInsight ? (
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-textPrimary leading-relaxed">
+                  {currentInsight.text}
+                </p>
+                {currentInsight.action && (
                   <button
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="p-2.5 bg-[#16161A] border border-white/5 hover:border-white/10 text-[#9CA3AF] hover:text-white rounded-xl transition-all duration-200 disabled:opacity-30 disabled:hover:border-white/5 disabled:hover:text-[#9CA3AF]"
+                    onClick={currentInsight.action}
+                    className="h-10 px-4 rounded-xl bg-primary hover:bg-primaryHover text-white text-xs font-bold transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
-                    <FiChevronLeft className="h-4 w-4" />
+                    {currentInsight.actionLabel}
                   </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-textSecondary italic">
+                Gathering financial analytics for insights...
+              </p>
+            )}
+          </div>
 
-                  {getPageNumbers().map((num, i) => {
-                    if (num === "...") {
-                      return (
-                        <span
-                          key={`dots-${i}`}
-                          className="px-2 text-[#9CA3AF] select-none cursor-default font-semibold text-xs"
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-                    return (
-                      <button
-                        key={num}
-                        onClick={() => setCurrentPage(num)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
-                          currentPage === num
-                            ? "bg-[#A855F7] text-white border-primary shadow-lg shadow-primary/20"
-                            : "bg-[#16161A] text-[#9CA3AF] border-white/5 hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        {num}
-                      </button>
-                    );
-                  })}
-
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="p-2.5 bg-[#16161A] border border-white/5 hover:border-white/10 text-[#9CA3AF] hover:text-white rounded-xl transition-all duration-200 disabled:opacity-30 disabled:hover:border-white/5 disabled:hover:text-[#9CA3AF]"
-                  >
-                    <FiChevronRight className="h-4 w-4" />
-                  </button>
-                </motion.div>
-              )}
+          {activeInsights.length > 1 && (
+            <div className="flex items-center gap-4 mt-6 pt-4 border-t border-border justify-end">
+              <button 
+                onClick={handlePrevInsight} 
+                className="text-xs font-bold text-textSecondary hover:text-textPrimary cursor-pointer focus:outline-none"
+              >
+                &lt; Previous
+              </button>
+              <button 
+                onClick={handleNextInsight} 
+                className="text-xs font-bold text-textSecondary hover:text-textPrimary cursor-pointer focus:outline-none"
+              >
+                Next &gt;
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Floating Action Button for Quick Add */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <motion.button
-          whileHover={budgetExists ? { scale: 1.05 } : {}}
-          whileTap={budgetExists ? { scale: 0.95 } : {}}
-          onClick={() => budgetExists && setIsQuickAddOpen(true)}
-          disabled={!budgetExists}
-          className={`flex h-14 w-14 items-center justify-center rounded-full bg-[#A855F7] text-white shadow-xl shadow-primary/30 hover:bg-[#b56ef8] transition-colors ${
-            !budgetExists ? "opacity-35 cursor-not-allowed shadow-none hover:bg-[#A855F7]" : ""
-          }`}
-          title="Quick Add Expense"
-        >
-          <span className="text-2xl font-semibold">⊕</span>
-        </motion.button>
+      {/* Monthly Spending Chart + Activity Heatmap Row */}
+      <div className="flex flex-col md:flex-row gap-8 items-stretch">
+        {/* Monthly Spending Chart — 68% on Desktop, 60% on Tablet */}
+        <div className="w-full md:w-[60%] lg:w-[68%] bg-surface border border-border rounded-card p-7 shadow-sm flex flex-col">
+          <div className="mb-6">
+            <h3 className="text-[12px] font-semibold text-textSecondary uppercase tracking-wider">Monthly Spending</h3>
+            <p className="text-xs text-textSecondary mt-2 font-medium">Spending overview across the last 6 months</p>
+          </div>
+          <div className="flex-1 min-h-[320px]">
+            {analyticsSummary?.monthly_summary && analyticsSummary.monthly_summary.length > 0 ? (
+              <MonthlySpendingChart data={analyticsSummary.monthly_summary} />
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-textSecondary">No spending data found.</div>
+            )}
+          </div>
+        </div>
+
+        {/* Activity Card — 32% on Desktop, 40% on Tablet */}
+        <div className="w-full md:w-[40%] lg:w-[32%] bg-white rounded-[20px] border border-[#E5E7EB] shadow-sm flex flex-col pt-[28px] px-[28px] pb-[24px]">
+          <div>
+            <h3 className="text-[12px] font-semibold text-textSecondary uppercase tracking-wider leading-none">Activity</h3>
+            <p className="text-xs text-textSecondary mt-[6px] font-medium leading-none">Last 60 days</p>
+          </div>
+          <div className="mt-[24px] flex-1 flex items-center justify-center">
+            <ActivityHeatmap expenses={expenses} />
+          </div>
+        </div>
       </div>
 
-      {/* Quick Add Dialog Modal */}
-      <AnimatePresence>
-        {isQuickAddOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsQuickAddOpen(false)}
-              className="fixed inset-0 bg-black/75 backdrop-blur-sm"
+      {/* Search / Filter Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface border border-border rounded-card p-7 shadow-sm">
+        <h3 className="text-[20px] font-bold text-textPrimary font-heading">Recent Transactions</h3>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Search box */}
+          <div className="relative w-full md:w-60">
+            <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-textSecondary" />
+            <input
+              type="text"
+              placeholder="Search merchant, category..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-surface border border-border focus:border-primary rounded-xl pl-9 pr-4 py-2 text-[14px] text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 font-sans transition-all duration-150"
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ type: "spring", duration: 0.3 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/5 bg-[#16161A] p-6 shadow-2xl z-10 space-y-5"
+          </div>
+          
+          {/* Dropdown sort selector */}
+          <select
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="bg-surface border border-border focus:border-primary rounded-xl px-4 py-2 text-[14px] text-textPrimary focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer font-sans transition-all duration-150"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="amount-high">Amount: High to Low</option>
+            <option value="amount-low">Amount: Low to High</option>
+          </select>
+        </div>
+      </div>
+
+      {/* CARD-BASED TRANSACTIONS LIST */}
+      <div className="space-y-4">
+        {paginatedExpenses.length > 0 ? (
+          <ExpenseList
+            expenses={paginatedExpenses}
+            categories={categories}
+            viewMode="table"
+            onEdit={handleEditClick}
+            onDelete={handleDeleteClick}
+          />
+        ) : (
+          /* Professional Empty State Representation */
+          <div className="bg-surface border border-border rounded-card p-8 text-center max-w-sm mx-auto shadow-sm space-y-4 my-8 select-none">
+            <div className="mx-auto w-16 h-16 rounded-full bg-background flex items-center justify-center border border-border">
+              <svg className="w-8 h-8 text-textSecondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-md font-bold text-textPrimary">No expenses yet</h4>
+              <p className="text-xs text-textSecondary leading-relaxed">
+                Start tracking your money by adding your first expense.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsAddOpen(true)}
+              className="h-11 px-5 bg-primary hover:bg-primaryHover text-white text-xs font-bold rounded-[14px] shadow-sm cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
-              <div className="flex items-center justify-between border-b border-white/[0.04] pb-3">
-                <div className="flex items-center gap-2">
-                  <FiZap className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-bold text-white">Quick Add Expense</h3>
-                </div>
-                <button
-                  onClick={() => setIsQuickAddOpen(false)}
-                  className="text-[#9CA3AF] hover:text-white transition-colors"
-                >
-                  <FiX className="h-5 w-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleQuickAddSave} className="space-y-4">
-                {/* Natural Text Input */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#9CA3AF]">
-                    Natural Text Input
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={quickAddText}
-                    onChange={handleQuickAddTextChange}
-                    className="w-full bg-[#0F0F11] border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-[#9CA3AF]/30 focus:outline-none focus:border-primary/50 transition-colors resize-none"
-                    placeholder="e.g. Spent 250 on Burger, or Uber Ride 500..."
-                    autoFocus
-                  />
-                </div>
-
-                {/* Category Quick Chips */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#9CA3AF]">
-                    Category Quick Select
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { name: "Food", icon: FiCoffee },
-                      { name: "Transport", icon: FiCompass },
-                      { name: "Shopping", icon: FiShoppingBag },
-                      { name: "Entertainment", icon: FiTv },
-                      { name: "Health", icon: FiActivity },
-                      { name: "Others", icon: FiFolder },
-                    ].map((btn) => {
-                      const Icon = btn.icon;
-                      const isSelected = quickAddFields.category.toLowerCase() === btn.name.toLowerCase();
-                      return (
-                        <button
-                          key={btn.name}
-                          type="button"
-                          onClick={() => setQuickAddFields(prev => ({ ...prev, category: btn.name }))}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                            isSelected
-                              ? "bg-primary/20 border-primary/50 text-white"
-                              : "bg-[#0F0F11] border-white/5 text-[#9CA3AF] hover:border-white/20 hover:text-white"
-                          }`}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {btn.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Live confidence preview / edit fields */}
-                <div className="bg-[#0F0F11] border border-white/5 rounded-xl p-4 space-y-3">
-                  <span className="text-[10px] uppercase font-extrabold tracking-widest text-[#9CA3AF]/60 block border-b border-white/[0.04] pb-1.5">
-                    Confidence Parser (Click to Edit)
-                  </span>
-                  
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Amount */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-[#9CA3AF] uppercase">Amount (₹)</label>
-                      <input
-                        type="number"
-                        value={quickAddFields.amount}
-                        onChange={(e) => setQuickAddFields(prev => ({ ...prev, amount: e.target.value }))}
-                        className="w-full bg-[#16161A] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                        placeholder="Amount"
-                        required
-                      />
-                    </div>
-                    {/* Category Select */}
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-[#9CA3AF] uppercase">Category</label>
-                      <select
-                        value={quickAddFields.category}
-                        onChange={(e) => setQuickAddFields(prev => ({ ...prev, category: e.target.value }))}
-                        className="w-full bg-[#16161A] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none cursor-pointer"
-                      >
-                        <option value="Food">Food</option>
-                        <option value="Transport">Transport</option>
-                        <option value="Shopping">Shopping</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Health">Health</option>
-                        <option value="Others">Others</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-[#9CA3AF] uppercase">Description</label>
-                    <input
-                      type="text"
-                      value={quickAddFields.description}
-                      onChange={(e) => setQuickAddFields(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full bg-[#16161A] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
-                      placeholder="Description"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsQuickAddOpen(false)}
-                    className="flex-1 bg-white/5 hover:bg-white/10 border border-white/5 text-[#9CA3AF] hover:text-white rounded-xl py-2.5 text-xs font-bold transition-all duration-200"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isQuickAddSaving}
-                    className="flex-1 bg-primary hover:bg-[#b56ef8] text-white rounded-xl py-2.5 text-xs font-bold shadow-lg shadow-primary/20 transition-all duration-200 disabled:opacity-50"
-                  >
-                    {isQuickAddSaving ? "Saving..." : "Confirm & Save"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
+              Add Expense
+            </button>
           </div>
         )}
-      </AnimatePresence>
+      </div>
 
-      {/* Modals */}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-3 pt-4">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="h-9 px-4 bg-surface border border-border hover:bg-hoverAccent text-textSecondary rounded-xl text-xs font-bold disabled:opacity-30 disabled:hover:bg-surface cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+          >
+            Prev
+          </button>
+          <span className="text-xs text-textSecondary font-bold font-sans">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="h-9 px-4 bg-surface border border-border hover:bg-hoverAccent text-textSecondary rounded-xl text-xs font-bold disabled:opacity-30 disabled:hover:bg-surface cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* Floating Add Expense Sticky Button */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setIsAddOpen(true)}
+          className="flex items-center gap-2 px-5 py-3.5 bg-primary hover:bg-primaryHover text-white font-bold rounded-full shadow-md transition-all duration-200 cursor-pointer"
+        >
+          <FiPlus className="h-5 w-5" />
+          <span>Add Expense</span>
+        </button>
+      </div>
+
       <AddExpenseModal
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
         onSave={handleSaveExpense}
         isSaving={isSaving}
-        categories={categories}
       />
 
       <EditExpenseModal
@@ -1236,7 +632,6 @@ function ExpenseDashboard() {
         onUpdate={handleUpdateExpense}
         expense={selectedExpense}
         isUpdating={isUpdating}
-        categories={categories}
       />
 
       <DeleteConfirmModal
@@ -1251,8 +646,9 @@ function ExpenseDashboard() {
 
       <BudgetSetupModal
         isOpen={budgetExists === false}
-        onSuccess={handleBudgetSetupSuccess}
+        onSetupSuccess={handleBudgetSetupSuccess}
       />
+
     </div>
   );
 }

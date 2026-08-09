@@ -1,6 +1,6 @@
 /**
  * Custom Tooltip for Recharts charts.
- * Styled with #16161A background, 1px solid rgba(168,85,247,0.2) border, and 12px border radius.
+ * Styled with bg-white background, 1px solid border, and 12px border radius.
  */
 
 const formatCurrency = (amount) => {
@@ -18,18 +18,18 @@ export default function CustomTooltip({ active, payload, type = "monthly" }) {
     
     if (type === "monthly") {
       return (
-        <div className="bg-[#16161A] border border-[#A855F7]/20 rounded-xl p-4 shadow-xl select-none pointer-events-none">
-          <p className="text-[10px] font-extrabold text-[#9CA3AF] mb-1 uppercase tracking-wider">
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-lg select-none pointer-events-none">
+          <p className="text-[10px] font-extrabold text-[#64748B] mb-1 uppercase tracking-wider">
             {data.month_name} {data.year}
           </p>
           <div className="space-y-0.5">
-            <p className="text-base font-extrabold text-white">
+            <p className="text-base font-extrabold text-[#0F172A]">
               {formatCurrency(data.total_spent)}
             </p>
-            <p className="text-xs text-[#9CA3AF] font-medium">
+            <p className="text-xs text-[#64748B] font-medium">
               {data.expense_count} Expense{data.expense_count === 1 ? "" : "s"}
             </p>
-            <p className="text-[11px] text-[#A855F7] font-bold">
+            <p className="text-[11px] text-[#4F46E5] font-bold">
               Average {formatCurrency(data.average_expense)}
             </p>
           </div>
@@ -39,15 +39,15 @@ export default function CustomTooltip({ active, payload, type = "monthly" }) {
     
     if (type === "category") {
       return (
-        <div className="bg-[#16161A] border border-[#A855F7]/20 rounded-xl p-4 shadow-xl select-none pointer-events-none">
-          <p className="text-[10px] font-extrabold text-[#9CA3AF] mb-1 uppercase tracking-wider">
+        <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-lg select-none pointer-events-none">
+          <p className="text-[10px] font-extrabold text-[#64748B] mb-1 uppercase tracking-wider">
             {data.category}
           </p>
           <div className="space-y-0.5">
-            <p className="text-base font-extrabold text-white">
+            <p className="text-base font-extrabold text-[#0F172A]">
               {formatCurrency(data.total)}
             </p>
-            <p className="text-[11px] text-[#A855F7] font-bold">
+            <p className="text-[11px] text-[#4F46E5] font-bold">
               {data.percentage}% of overall spend
             </p>
           </div>
@@ -58,3 +58,4 @@ export default function CustomTooltip({ active, payload, type = "monthly" }) {
   
   return null;
 }
+

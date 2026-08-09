@@ -80,14 +80,28 @@ async def _run_analytics_aggregation(user_id: str, start_date: datetime) -> dict
                 "category_breakdown": [
                     {
                         "$group": {
-                            "_id": "$category",
+                            "_id": "$category_id",
                             "total": {"$sum": "$amount"}
+                        }
+                    },
+                    {
+                        "$lookup": {
+                            "from": "categories",
+                            "localField": "_id",
+                            "foreignField": "_id",
+                            "as": "cat_info"
+                        }
+                    },
+                    {
+                        "$unwind": {
+                            "path": "$cat_info",
+                            "preserveNullAndEmptyArrays": True
                         }
                     },
                     {
                         "$group": {
                             "_id": None,
-                            "categories": { "$push": { "category": "$_id", "total": "$total" } },
+                            "categories": { "$push": { "category": {"$ifNull": ["$cat_info.name", "Others"]}, "total": "$total" } },
                             "grand_total": { "$sum": "$total" }
                         }
                     },

@@ -125,10 +125,15 @@ async def get_analytics_trends(
         })
         
     # Category breakdown for selected range
+    from app.services.category_service import CategoryService
+    categories = await CategoryService.get_user_categories(user_id)
+    cat_id_to_name = {c["id"]: c["name"] for c in categories}
+
     category_totals = {}
     for e in current_expenses:
-        cat = e.get("category", "Others")
-        category_totals[cat] = category_totals.get(cat, 0.0) + e["amount"]
+        cat_id = str(e.get("category_id", ""))
+        cat_name = cat_id_to_name.get(cat_id, "Others")
+        category_totals[cat_name] = category_totals.get(cat_name, 0.0) + e["amount"]
 
     category_breakdown = []
     if total_spent > 0:

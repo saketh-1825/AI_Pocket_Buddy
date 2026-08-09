@@ -5,10 +5,14 @@ import "react-toastify/dist/ReactToastify.css";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ExpenseDashboard from "./pages/ExpenseDashboard";
-import CategoryManagement from "./pages/CategoryManagement";
 import AnalyticsDashboard from "./pages/AnalyticsDashboard";
-import ProtectedRoute from "./components/ProtectedRoute";
-import ErrorBoundary from "./components/ErrorBoundary";
+import BudgetCenter from "./pages/BudgetCenter";
+import AIBuddyPage from "./pages/AIBuddyPage";
+import HeatmapPage from "./pages/HeatmapPage";
+import Settings from "./pages/Settings";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
+import ErrorBoundary from "./components/ui/ErrorBoundary";
+import Layout from "./components/layout/Layout";
 
 function App() {
 
@@ -19,7 +23,7 @@ function App() {
         <Routes>
 
           <Route
-            path="/"
+            path="/login"
             element={<Login />}
           />
 
@@ -28,32 +32,22 @@ function App() {
             element={<Register />}
           />
 
+          {/* Nest layout under protected routes */}
           <Route
-            path="/dashboard"
             element={
               <ProtectedRoute>
-                <ExpenseDashboard />
+                <Layout />
               </ProtectedRoute>
             }
-          />
-
-          <Route
-            path="/categories"
-            element={
-              <ProtectedRoute>
-                <CategoryManagement />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <AnalyticsDashboard />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route path="/" element={<ExpenseDashboard />} />
+            <Route path="/dashboard" element={<ExpenseDashboard />} />
+            <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/budgets" element={<BudgetCenter />} />
+            <Route path="/ai-buddy" element={<AIBuddyPage />} />
+            <Route path="/heatmap" element={<HeatmapPage />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
 
         </Routes>
 

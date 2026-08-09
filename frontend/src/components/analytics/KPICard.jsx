@@ -1,9 +1,17 @@
+import React from "react";
 import { motion } from "framer-motion";
+import { Caption, KPIMetric, CategoryMetric, SecondaryMetric } from "../ui/Typography";
+import { FiCreditCard, FiActivity, FiTag, FiTrendingUp, FiCheckCircle } from "react-icons/fi";
 
-/**
- * Premium fintech KPI Card component.
- * Supports title, current value, icons, hover glow effects, children components (ComparisonBadge) and descriptions.
- */
+const getKPIIcon = (title) => {
+  const t = (title || "").toLowerCase();
+  if (t.includes("spend")) return FiCreditCard;
+  if (t.includes("daily") || t.includes("average")) return FiActivity;
+  if (t.includes("category")) return FiTag;
+  if (t.includes("savings") || t.includes("budget")) return FiTrendingUp;
+  return FiCheckCircle;
+};
+
 export default function KPICard({ 
   title, 
   value, 
@@ -11,62 +19,101 @@ export default function KPICard({
   trendType, 
   description, 
   children, 
-  icon: Icon, 
-  delay = 0 
+  delay = 0,
+  className = ""
 }) {
   const isPositive = trendType === "positive";
+  
+  // Clean text from title (e.g. "💳 TOTAL SPEND")
+  let labelText = title || "";
+  const firstSpaceIndex = labelText.indexOf(" ");
+  if (firstSpaceIndex !== -1) {
+    const possibleEmoji = labelText.substring(0, firstSpaceIndex);
+    // If it's a known emoji, extract it
+    if (possibleEmoji.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]|\uD83D[\uDE00-\uDE4F]/) || possibleEmoji.length <= 2) {
+      labelText = labelText.substring(firstSpaceIndex + 1);
+    }
+  }
+
+  const isTopCategory = title && title.includes("TOP CATEGORY");
+  const IconComponent = getKPIIcon(title);
+
+  const renderValue = () => {
+    if (isTopCategory) {
+      return (
+        <CategoryMetric className="block truncate select-none">
+          {value}
+        </CategoryMetric>
+      );
+    }
+    if (typeof value === "string") {
+      const match = value.match(/^(₹\s*[\d,]+)(\.\d+)$/);
+      if (match) {
+        return (
+          <KPIMetric className="inline-block align-baseline select-none">
+            {match[1]}
+            <span className="text-[20px] font-bold align-super ml-0.5">
+              {match[2]}
+            </span>
+          </KPIMetric>
+        );
+      }
+    }
+    return (
+      <KPIMetric className="inline-block align-baseline select-none">
+        {value}
+      </KPIMetric>
+    );
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: "easeOut" }}
-      whileHover={{ 
-        scale: 1.02,
-        y: -4, 
-        borderColor: "#A855F7",
-        boxShadow: "0 0 20px rgba(168, 85, 247, 0.15)"
-      }}
-      className="bg-[#16161A] border border-white/5 rounded-xl2 p-6 transition-all duration-300 flex flex-col justify-between min-h-[150px] relative overflow-hidden group select-none"
+      transition={{ duration: 0.2, delay, ease: "easeInOut" }}
+      whileHover={{ scale: 1.01 }}
+      className={`bg-surface border border-border rounded-card p-7 shadow-sm flex flex-col select-none relative group transition-all duration-150 ${className}`}
     >
-      {/* Subtle hover gradient glow overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#A855F7]/[0.05] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-      <div className="relative z-10 flex justify-between items-start">
-        <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#9CA3AF] font-sans">
-          {title}
-        </p>
-        {Icon && (
-          <div className="p-2.5 bg-white/[0.02] border border-white/5 rounded-xl text-[#A855F7] group-hover:bg-[#A855F7]/12 transition-colors">
-            <Icon className="h-4 w-4" />
-          </div>
-        )}
+      {/* 1. HEADER ROW */}
+      <div className="flex items-center gap-4 shrink-0">
+        <div className="w-10 h-10 flex items-center justify-center bg-background border border-border rounded-xl text-textSecondary shrink-0">
+          <IconComponent className="h-5 w-5" />
+        </div>
+        <Caption className="text-textSecondary font-bold tracking-wider uppercase">
+          {labelText}
+        </Caption>
       </div>
-      
-      <div className="mt-4 relative z-10">
-        <h3 className="text-2xl font-extrabold text-white tracking-tight font-sans">
-          {value}
-        </h3>
+
+      {/* 2. VALUE & SUPPORTING SECTION */}
+      <div className="mt-5 flex flex-col justify-start">
+        {renderValue()}
         
-        {/* Render children (like ComparisonBadge) or fallback trend badge */}
-        {children}
-        
-        {!children && trend && (
-          <span
-            className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 mt-2 rounded border ${
-              isPositive
-                ? "text-success bg-success/10 border-success/15"
-                : "text-danger bg-danger/10 border-danger/15"
-            }`}
-          >
-            {trend}
-          </span>
-        )}
-        
-        {description && (
-          <p className="text-[10px] text-[#9CA3AF] font-medium tracking-wide mt-2">
-            {description}
-          </p>
+        {/* 3. SUPPORTING INFORMATION ROW */}
+        {(children || trend || description) && (
+          <div className="mt-3 flex flex-col gap-1">
+            {description && (
+              <SecondaryMetric className="text-sm font-semibold text-textSecondary block">
+                {description}
+              </SecondaryMetric>
+            )}
+            {(children || trend) && (
+              <div className="flex items-center gap-2 shrink-0">
+                {children ? (
+                  children
+                ) : (
+                  <span
+                    className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                      isPositive
+                        ? "text-success bg-[#DCFCE7]/60 border-[#DCFCE7]"
+                        : "text-danger bg-[#FEE2E2]/60 border-[#FEE2E2]"
+                    }`}
+                  >
+                    {trend}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </motion.div>

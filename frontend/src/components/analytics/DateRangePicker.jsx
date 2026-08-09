@@ -33,21 +33,20 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
   return (
     <div className="flex flex-wrap items-center gap-3">
       {/* Pills Container */}
-      <div className="flex bg-[#16161A] p-1 border border-white/5 rounded-full select-none">
+      <div className="flex bg-slate-100 p-1 border border-default rounded-full select-none">
         {options.map((opt) => {
           const isSelected = selectedRange === opt.id;
           return (
             <motion.button
               key={opt.id}
               whileHover={{ 
-                borderColor: "#A855F7",
-                boxShadow: "0 0 20px rgba(168,85,247,0.18)"
+                borderColor: "#4F46E5",
               }}
               onClick={() => handleOptionClick(opt.id)}
               className={`px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all duration-300 border border-transparent ${
                 isSelected 
-                  ? "bg-[#A855F7] text-white border-[#A855F7] shadow-lg shadow-[#A855F7]/20" 
-                  : "bg-transparent text-[#9CA3AF] hover:text-white hover:border-[#A855F7]/30"
+                  ? "bg-primary text-white border-primary shadow-sm" 
+                  : "bg-transparent text-[#64748B] hover:text-[#0F172A]"
               }`}
             >
               {opt.label}
@@ -58,8 +57,8 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
 
       {/* Selected Custom Range Display */}
       {selectedRange === "custom" && startDate && endDate && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-[#16161A] border border-[#A855F7]/20 rounded-full text-xs text-[#9CA3AF] font-bold">
-          <FiCalendar className="text-[#A855F7] h-3.5 w-3.5" />
+        <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-default rounded-full text-xs text-[#64748B] font-bold">
+          <FiCalendar className="text-primary h-3.5 w-3.5" />
           <span>{startDate} to {endDate}</span>
         </div>
       )}
@@ -74,7 +73,7 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
-              className="fixed inset-0 bg-black/75 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
             />
 
             {/* Modal Box */}
@@ -82,17 +81,17 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-white/5 bg-[#16161A] p-6 shadow-2xl z-10"
+              className="relative w-full max-w-sm overflow-hidden rounded-dialog border border-default bg-surface p-6 shadow-md z-10"
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                  <FiCalendar className="text-[#A855F7] h-4 w-4" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[#0F172A] flex items-center gap-2">
+                  <FiCalendar className="text-primary h-4 w-4" />
                   Select Custom Range
                 </h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-[#9CA3AF] hover:text-white transition-colors"
+                  className="text-[#64748B] hover:text-[#0F172A] transition-colors"
                 >
                   <FiX className="h-5 w-5" />
                 </button>
@@ -101,7 +100,7 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
               {/* Form */}
               <form onSubmit={handleCustomApply} className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#9CA3AF] mb-1.5">
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#64748B] mb-1.5">
                     Start Date
                   </label>
                   <input
@@ -109,12 +108,12 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
                     required
                     value={tempStart}
                     onChange={(e) => setTempStart(e.target.value)}
-                    className="w-full bg-[#0F0F11] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#A855F7]/50 transition-colors"
+                    className="w-full bg-[#F1F5F9] border border-default rounded-input px-4 py-2.5 text-[#0F172A] focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#9CA3AF] mb-1.5">
+                  <label className="block text-[10px] font-extrabold uppercase tracking-wider text-[#64748B] mb-1.5">
                     End Date
                   </label>
                   <input
@@ -122,22 +121,22 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
                     required
                     value={tempEnd}
                     onChange={(e) => setTempEnd(e.target.value)}
-                    className="w-full bg-[#0F0F11] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#A855F7]/50 transition-colors"
+                    className="w-full bg-[#F1F5F9] border border-default rounded-input px-4 py-2.5 text-[#0F172A] focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-3 pt-4 border-t border-white/5">
+                <div className="flex gap-3 pt-4 border-t border-default">
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 rounded-xl border border-white/10 bg-transparent py-2.5 text-xs font-bold uppercase tracking-wider text-[#9CA3AF] transition-colors hover:bg-white/5 hover:text-white"
+                    className="flex-1 rounded-btn border border-default bg-transparent py-2.5 text-xs font-bold uppercase tracking-wider text-[#64748B] transition-colors hover:bg-[#F1F5F9]"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 rounded-xl bg-[#A855F7] hover:bg-[#b56ef8] py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#A855F7]/25 transition-all duration-200"
+                    className="flex-1 rounded-btn bg-primary hover:bg-primaryHover py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-all duration-200"
                   >
                     Apply
                   </button>
@@ -150,3 +149,4 @@ export default function DateRangePicker({ selectedRange, onRangeChange, startDat
     </div>
   );
 }
+

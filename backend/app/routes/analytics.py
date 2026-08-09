@@ -1,8 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from app.utils.auth import get_current_user
-from app.schemas.analytics_schema import AnalyticsSummaryResponse, AnalyticsTrendsResponse
+from app.schemas.analytics_schema import (
+    AnalyticsSummaryResponse, 
+    AnalyticsTrendsResponse,
+    AnalyticsHeatmapResponse,
+    AnalyticsRunningBalanceResponse
+)
 from app.services.analytics_service import get_analytics_summary
 from app.services.trend_service import get_analytics_trends
+from app.services.pandas_service import PandasAnalyticsService
 from typing import Optional
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
@@ -47,3 +53,43 @@ async def get_trends(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Trends calculation failure: {str(e)}"
         )
+
+@router.get("/heatmap", response_model=AnalyticsHeatmapResponse)
+async def get_heatmap(current_user: dict = Depends(get_current_user)):
+    try:
+        user_id = str(current_user["_id"])
+        df = await PandasAnalyticsService.load_expenses_dataframe(user_id)
+        df_prepared = PandasAnalyticsService.prepare_dataframe(df)
+        heatmap_records = PandasAnalyticsService.get_category_heatmap(df_prepared)
+        
+        flat_heatmap = []
+        for record in heatmap_records:
+            day_name = record.get("day_name")
+            for hour in range(24):
+                val = record.get(hour, 0.0)
+                flat_heatmap.append({
+                    "day": day_name,
+                    "hour": hour,
+                    "amount": float(val)
+                })
+        return {"heatmap": flat_heatmap}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Heatmap calculation failure: {str(e)}"
+        )
+
+@router.get("/running-balance", response_model=AnalyticsRunningBalanceResponse)
+async def get_running_balance(current_user: dict = Depends(get_current_user)):
+    try:
+        user_id = str(current_user["_id"])
+        df = await PandasAnalyticsService.load_expenses_dataframe(user_id)
+        df_prepared = PandasAnalyticsService.prepare_dataframe(df)
+        running_balance = PandasAnalyticsService.get_running_balance(df_prepared)
+        return {"running_balance": running_balance}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Running balance calculation failure: {str(e)}"
+        )
+

@@ -1,17 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from app.database import db, create_db_indexes
+from app.database import db
 from app.routes.expense_routes import router as expense_router
 from app.routes.auth_routes import router as auth_router
 from app.routes.category_routes import router as category_router
 from app.routes.budget_routes import router as budget_router
 from app.routes.analytics import router as analytics_router
+from app.routes.insights import router as insights_router
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Create database indexes
-    await create_db_indexes()
+    # Startup: Run database orchestration (migrations & index validation)
+    from app.startup import run_startup
+    await run_startup()
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -39,4 +42,5 @@ app.include_router(auth_router)
 app.include_router(expense_router)
 app.include_router(category_router)
 app.include_router(budget_router)
-app.include_router(analytics_router)
+app.include_router(analytics_router)
+app.include_router(insights_router)

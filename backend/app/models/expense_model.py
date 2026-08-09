@@ -11,7 +11,7 @@ def expense_helper(expense):
         "id": str(expense["_id"]),
         "title": expense["title"],
         "amount": expense["amount"],
-        "category": expense["category"],
+        "category_id": str(expense.get("category_id", "")),
         "description": expense.get("description"),
         "date": expense["date"],
         "user_id": expense["user_id"],

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import API from "../api/axios";
+import API from "../services/api/axios";
 
 function Register() {
 
@@ -41,7 +41,7 @@ function Register() {
         formData.name
       );
 
-      navigate("/dashboard");
+      navigate("/");
 
     } catch (error) {
 
@@ -51,61 +51,85 @@ function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-[#F3F4F6] font-sans px-4 select-none">
+      <div className="w-full max-w-md bg-white border border-[#E5E7EB] rounded-2xl p-8 shadow-soft space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <span className="text-3xl font-extrabold tracking-tight text-[#111827]">
+            Pocket Buddy
+          </span>
+          <h2 className="text-lg font-bold text-[#111827] tracking-wide pt-2">
+            Create an account
+          </h2>
+          <p className="text-[15px] text-[#6B7280] font-normal">
+            Start tracking your spending and savings today.
+          </p>
+        </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="w-80 p-6 border rounded-lg flex flex-col gap-4"
-      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="block text-[12px] font-bold uppercase tracking-wider text-[#6B7280]">
+              Full Name
+            </label>
+            <input
+              type="text"
+              name="name"
+              placeholder="Saketh"
+              className="w-full bg-slate-50 border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111827] focus:outline-none focus:border-[#4F46E5] transition-colors font-sans text-[14px]"
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <h1 className="text-2xl font-bold">
-          Register
-        </h1>
+          <div className="space-y-1">
+            <label className="block text-[12px] font-bold uppercase tracking-wider text-[#6B7280]">
+              Email Address
+            </label>
+            <input
+              type="email"
+              name="email"
+              placeholder="name@example.com"
+              className="w-full bg-slate-50 border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111827] focus:outline-none focus:border-[#4F46E5] transition-colors font-sans text-[14px]"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <input
-          type="text"
-          name="name"
-          placeholder="Name"
-          className="border p-2 rounded"
-          value={formData.name}
-          onChange={handleChange}
-        />
+          <div className="space-y-1">
+            <label className="block text-[12px] font-bold uppercase tracking-wider text-[#6B7280]">
+              Password
+            </label>
+            <input
+              type="password"
+              name="password"
+              placeholder="Create password"
+              className="w-full bg-slate-50 border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111827] focus:outline-none focus:border-[#4F46E5] transition-colors font-sans text-[14px]"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          className="border p-2 rounded"
-          value={formData.email}
-          onChange={handleChange}
-        />
+          <button
+            type="submit"
+            className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-xl py-3 text-sm font-semibold transition-all shadow-sm cursor-pointer mt-2"
+          >
+            Register
+          </button>
+        </form>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          className="border p-2 rounded"
-          value={formData.password}
-          onChange={handleChange}
-        />
-
-        <button className="bg-black text-white p-2 rounded">
-          Register
-        </button>
-
-        <p className="text-sm text-center">
+        <p className="text-sm text-center text-[#6B7280]">
           Already have an account?{" "}
-
           <Link
-            to="/"
-            className="text-blue-500"
+            to="/login"
+            className="text-[#4F46E5] font-semibold hover:underline"
           >
             Login
           </Link>
         </p>
-
-      </form>
-
+      </div>
     </div>
   );
 }
