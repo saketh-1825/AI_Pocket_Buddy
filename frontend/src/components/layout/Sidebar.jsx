@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 
 export default function Sidebar({ handleLogout, userName }) {
+  const userEmail = localStorage.getItem("userEmail") || `${userName.toLowerCase().replace(/\s+/g, "")}@example.com`;
   const location = useLocation();
   const { isCollapsed, isMobileOpen, closeSidebar, openSidebar } = useSidebar();
 
@@ -171,10 +172,9 @@ export default function Sidebar({ handleLogout, userName }) {
               {/* User details */}
               <div className="min-w-0 flex-1">
                 <p className="text-[14px] font-bold text-[#111827] truncate leading-none">{userName}</p>
-                <p className="text-[12px] text-[#6B7280] font-medium truncate mt-1.5 leading-none">saketh@gmail.com</p>
+                <p className="text-[12px] text-[#6B7280] font-medium truncate mt-1.5 leading-none">{userEmail}</p>
               </div>
-              {/* Right chevron */}
-              <FiChevronRight className="h-4 w-4 text-[#94A3B8] shrink-0" />
+              
             </div>
             <button
               onClick={handleLogout}
@@ -196,7 +196,7 @@ export default function Sidebar({ handleLogout, userName }) {
                 </span>
               </div>
               <div className="absolute left-full ml-4 px-3 py-1.5 bg-white border border-[#E5E7EB] text-[#111827] text-[12px] font-semibold rounded-lg shadow-sm opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-all duration-150 delay-150 transform translate-x-[-10px] group-hover:translate-x-0" role="tooltip">
-                {userName} (saketh@gmail.com)
+                {userName} ({userEmail})
               </div>
             </div>
           </div>

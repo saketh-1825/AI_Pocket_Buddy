@@ -54,8 +54,16 @@ class PandasAnalyticsService:
                     df[col] = pd.Series(dtype='object')
             return df
         
-        # Convert date to datetime and strip timezone info to prevent comparison issues
-        df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
+        # Convert date to datetime. Motor may return tz-aware UTC datetimes.
+        # We must tz_convert to UTC first, then strip the timezone — NOT tz_localize(None)
+        # directly (which would silently drop tz without converting and give wrong values).
+        parsed_dates = pd.to_datetime(df["date"])
+        if parsed_dates.dt.tz is not None:
+            # tz-aware: convert to UTC then strip timezone info
+            df["date"] = parsed_dates.dt.tz_convert("UTC").dt.tz_localize(None)
+        else:
+            # tz-naive: already UTC (Motor < 3.x behavior), no conversion needed
+            df["date"] = parsed_dates
         
         # Extract features
         df["day_name"] = df["date"].dt.day_name()

@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -8,7 +11,6 @@ from app.routes.category_routes import router as category_router
 from app.routes.budget_routes import router as budget_router
 from app.routes.analytics import router as analytics_router
 from app.routes.insights import router as insights_router
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,4 +45,4 @@ app.include_router(expense_router)
 app.include_router(category_router)
 app.include_router(budget_router)
 app.include_router(analytics_router)
-app.include_router(insights_router)
+app.include_router(insights_router)

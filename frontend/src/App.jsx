@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -14,6 +14,12 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import Layout from "./components/layout/Layout";
 
+// Redirect already-authenticated users away from public pages (login/register)
+function PublicRoute({ children }) {
+  const token = localStorage.getItem("token");
+  return token ? <Navigate to="/" replace /> : children;
+}
+
 function App() {
 
   return (
@@ -24,12 +30,20 @@ function App() {
 
           <Route
             path="/login"
-            element={<Login />}
+            element={
+              <PublicRoute>
+                <Login />
+              </PublicRoute>
+            }
           />
 
           <Route
             path="/register"
-            element={<Register />}
+            element={
+              <PublicRoute>
+                <Register />
+              </PublicRoute>
+            }
           />
 
           {/* Nest layout under protected routes */}
@@ -48,6 +62,9 @@ function App() {
             <Route path="/heatmap" element={<HeatmapPage />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
+
+          {/* Catch-all: redirect any unknown URL back to dashboard (or login if not authed) */}
+          <Route path="*" element={<Navigate to="/" replace />} />
 
         </Routes>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FiCalendar, FiClock, FiPlus, FiChevronDown } from "react-icons/fi";
 
 import { getCalendarHeatmap, getSpendingPattern } from "../services/insights/insightsService";
@@ -13,6 +13,7 @@ import SidebarToggle from "../components/layout/SidebarToggle";
 
 export default function HeatmapPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   
   // Data States
@@ -45,9 +46,12 @@ export default function HeatmapPage() {
     }
   };
 
+  // Re-fetch every time the user navigates to this page.
+  // location.key changes on every navigation event (even to the same route),
+  // which is needed because React Router keeps this component alive via <Outlet>.
   useEffect(() => {
     loadHeatmapData();
-  }, []);
+  }, [location.key]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
