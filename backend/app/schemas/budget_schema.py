@@ -6,15 +6,6 @@ from typing import Optional, List
 class LegacyBudgetUpdate(BaseModel):
     monthly_budget: float = Field(..., gt=0)
 
-class LegacyBudgetResponse(BaseModel):
-    id: str
-    user_id: str
-    monthly_budget: float
-    month: int
-    year: int
-    created_at: datetime
-    updated_at: datetime
-
 class LegacyBudgetCheckResponse(BaseModel):
     exists: bool
     monthly_budget: Optional[float] = None
@@ -42,12 +33,6 @@ class BudgetResponse(BaseModel):
     spent_amount: float
     remaining_amount: float
     progress_percentage: float
-    status: str
-
-class BudgetAlertItem(BaseModel):
-    category: str
-    used_percentage: float
-    remaining: float
     status: str
 
 class BudgetAlertsResponse(BaseModel):

@@ -10,12 +10,15 @@ async def test_get_analytics_summary(client, test_user):
     
     # Seed some expenses for the user so summary does not return 404
     now = datetime.now(timezone.utc)
+    cat_food = await app.database.db["categories"].insert_one({"name": "Food", "normalized_name": "food", "user_id": user_id})
+    cat_transport = await app.database.db["categories"].insert_one({"name": "Transport", "normalized_name": "transport", "user_id": user_id})
+
     expenses = [
         {
             "user_id": user_id,
             "title": "Grocery Shopping",
             "amount": 2500.0,
-            "category": "Food",
+            "category_id": cat_food.inserted_id,
             "description": "Weekly grocery run at Supermarket",
             "date": now,
             "created_at": now
@@ -24,7 +27,7 @@ async def test_get_analytics_summary(client, test_user):
             "user_id": user_id,
             "title": "Uber ride",
             "amount": 450.0,
-            "category": "Transport",
+            "category_id": cat_transport.inserted_id,
             "description": "Office commute",
             "date": now,
             "created_at": now

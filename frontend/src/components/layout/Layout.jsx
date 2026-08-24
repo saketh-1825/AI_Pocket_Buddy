@@ -16,17 +16,18 @@ import { toast } from "react-toastify";
 
 import { useSidebar } from "../../hooks/useSidebar";
 import Sidebar from "./Sidebar";
+import { useAuthStore } from "../../store/authStore";
 
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isCollapsed, isMobileOpen, closeSidebar } = useSidebar();
   const [showMoreMobile, setShowMoreMobile] = useState(false);
-  const userName = localStorage.getItem("userName") || "Saketh";
+  const userName = useAuthStore((state) => state.userName) || "Saketh";
+  const clearAuth = useAuthStore((state) => state.clearAuth);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userName");
+    clearAuth();
     toast.info("Logged out successfully", { theme: "light" });
     navigate("/login");
   };

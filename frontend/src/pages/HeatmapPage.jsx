@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FiCalendar, FiClock, FiPlus, FiChevronDown } from "react-icons/fi";
+import { FiPlus, FiChevronDown } from "react-icons/fi";
 
 import { getCalendarHeatmap, getSpendingPattern } from "../services/insights/insightsService";
 import { getAnalyticsSummary } from "../services/analytics/analyticsService";
@@ -14,7 +14,6 @@ import SidebarToggle from "../components/layout/SidebarToggle";
 export default function HeatmapPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [loading, setLoading] = useState(true);
   
   // Data States
   const [calendarData, setCalendarData] = useState([]);
@@ -26,7 +25,6 @@ export default function HeatmapPage() {
   const { categories, fetchCategories } = useCategoryStore();
 
   const loadHeatmapData = async () => {
-    setLoading(true);
     try {
       const [calendar, pattern, summaryData, expList] = await Promise.all([
         getCalendarHeatmap(),
@@ -41,8 +39,6 @@ export default function HeatmapPage() {
       setExpenses(expList);
     } catch (err) {
       console.error("Failed to load heatmap page data:", err);
-    } finally {
-      setLoading(false);
     }
   };
 

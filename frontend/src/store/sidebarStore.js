@@ -34,7 +34,7 @@ export const useSidebarStore = create((set) => ({
   },
   
   closeSidebar: () => {
-    set((state) => {
+    set(() => {
       const desktop = isDesktopViewport();
       if (desktop) {
         localStorage.setItem("sidebarMode", "collapsed");
@@ -46,7 +46,7 @@ export const useSidebarStore = create((set) => ({
   },
   
   openSidebar: () => {
-    set((state) => {
+    set(() => {
       const desktop = isDesktopViewport();
       if (desktop) {
         localStorage.setItem("sidebarMode", "expanded");

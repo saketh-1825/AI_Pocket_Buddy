@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import API from "../services/api/axios";
+import { useAuthStore } from "../store/authStore";
+import { register } from "../services/auth/authService";
 
 function Register() {
 
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -24,22 +26,11 @@ function Register() {
 
     try {
 
-      const response = await API.post(
-        "/register",
-        formData
-      );
+      const response = await register(formData);
 
-      console.log(response.data);
+      console.log(response);
 
-      localStorage.setItem(
-        "token",
-        response.data.access_token
-      );
-
-      localStorage.setItem(
-        "userName",
-        formData.name
-      );
+      setAuth(response.access_token, formData.name);
 
       navigate("/");
 

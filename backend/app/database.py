@@ -5,12 +5,17 @@ import os
 load_dotenv()
 
 MONGO_URL = os.getenv("MONGO_URL")
+#mongoDB client not created directly when importing the file
 _client = None
-
+#client is created only when we need the database for the first time
 def get_db_collection(collection_name: str):
     global _client
     if _client is None:
+        #creating the client
         _client = AsyncIOMotorClient(MONGO_URL)
+        #we have two databases 
+        #One for testing so that we do not change the things directly
+        #one is the actual database that we use for the application
     if os.getenv("TESTING") == "True":
         return _client.expense_tracker_test[collection_name]
     return _client.expense_tracker[collection_name]

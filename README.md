@@ -120,23 +120,6 @@ DATABASE_NAME=expense_tracker
 
 ---
 
-## Deployment Configuration
-
-### Frontend (Vercel)
-The project is configured for seamless deployment on Vercel:
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-- **Configuration**: `frontend/vercel.json` maps all sub-directories back to `index.html` preventing `404 Not Found` errors on route reload.
-
-### Backend (Railway)
-The backend is set up for deployment on Railway:
-- **Runner**: Nixpacks
-- **Start Command**: Configured in `backend/Procfile` and `backend/railway.json`:
-  ```bash
-  uvicorn app.main:app --host 0.0.0.0 --port $PORT
-  ```
-
----
 
 ## End-to-End Testing Checklist
 

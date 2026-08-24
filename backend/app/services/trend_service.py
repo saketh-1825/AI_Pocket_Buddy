@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from app.database import db
+from app.services.category_service import CategoryService
 
 def parse_date(date_str: str, is_end: bool = False) -> datetime:
     try:
@@ -48,67 +49,92 @@ async def get_analytics_trends(
     prev_start_dt = start_dt - timedelta(days=duration_days)
     prev_end_dt = start_dt - timedelta(microseconds=1)
     
-    # Query database from min(prev_start_dt, now - 60 days) to end_dt
-    query_start = min(prev_start_dt, now - timedelta(days=60))
-    
-    cursor = expenses_col.find({
-        "user_id": user_id,
-        "date": {"$gte": query_start, "$lte": end_dt}
-    })
-    expenses = await cursor.to_list(length=10000)
-    
-    # Normalize e["date"] to be timezone-aware (UTC) to prevent naive vs aware comparison issues
-    for e in expenses:
-        if isinstance(e.get("date"), datetime):
-            if e["date"].tzinfo is None:
-                e["date"] = e["date"].replace(tzinfo=timezone.utc)
-            else:
-                e["date"] = e["date"].astimezone(timezone.utc)
-                
-    # Calculate Total Spent, count, daily average in selected range
-    current_expenses = [e for e in expenses if start_dt <= e["date"] <= end_dt]
-    total_spent = sum(e["amount"] for e in current_expenses)
-    expense_count = len(current_expenses)
-    average_daily_spend = total_spent / duration_days
-    
-    # WoW Calculations
     wow_curr_start = now - timedelta(days=7)
     wow_prev_start = now - timedelta(days=14)
-    
-    wow_curr_spend = sum(e["amount"] for e in expenses if wow_curr_start <= e["date"] <= now)
-    wow_prev_spend = sum(e["amount"] for e in expenses if wow_prev_start <= e["date"] < wow_curr_start)
-    
-    if wow_prev_spend > 0:
-        week_over_week = ((wow_curr_spend - wow_prev_spend) / wow_prev_spend) * 100
-    else:
-        week_over_week = 0.0
-        
-    # MoM Calculations
     mom_curr_start = now - timedelta(days=30)
     mom_prev_start = now - timedelta(days=60)
     
-    mom_curr_spend = sum(e["amount"] for e in expenses if mom_curr_start <= e["date"] <= now)
-    mom_prev_spend = sum(e["amount"] for e in expenses if mom_prev_start <= e["date"] < mom_curr_start)
+    query_start = min(prev_start_dt, mom_prev_start)
+    query_end = max(end_dt, now)
     
-    if mom_prev_spend > 0:
-        month_over_month = ((mom_curr_spend - mom_prev_spend) / mom_prev_spend) * 100
-    else:
-        month_over_month = 0.0
-        
-    # Build Trend Chart Points
-    current_day_totals = {}
-    current_day_counts = {}
-    for e in current_expenses:
-        d_str = e["date"].strftime("%Y-%m-%d")
-        current_day_totals[d_str] = current_day_totals.get(d_str, 0.0) + e["amount"]
-        current_day_counts[d_str] = current_day_counts.get(d_str, 0) + 1
-        
-    prev_expenses = [e for e in expenses if prev_start_dt <= e["date"] <= prev_end_dt]
-    prev_day_totals = {}
-    for e in prev_expenses:
-        d_str = e["date"].strftime("%Y-%m-%d")
-        prev_day_totals[d_str] = prev_day_totals.get(d_str, 0.0) + e["amount"]
-        
+    pipeline = [
+        {"$match": {
+            "user_id": user_id,
+            "date": {"$gte": query_start, "$lte": query_end}
+        }},
+        {"$facet": {
+            "current_range": [
+                {"$match": {"date": {"$gte": start_dt, "$lte": end_dt}}},
+                {"$group": {
+                    "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$date"}},
+                    "total": {"$sum": "$amount"},
+                    "count": {"$sum": 1}
+                }}
+            ],
+            "previous_range": [
+                {"$match": {"date": {"$gte": prev_start_dt, "$lte": prev_end_dt}}},
+                {"$group": {
+                    "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$date"}},
+                    "total": {"$sum": "$amount"}
+                }}
+            ],
+            "category_totals": [
+                {"$match": {"date": {"$gte": start_dt, "$lte": end_dt}}},
+                {"$group": {
+                    "_id": "$category_id",
+                    "total": {"$sum": "$amount"}
+                }}
+            ],
+            "wow_curr": [
+                {"$match": {"date": {"$gte": wow_curr_start, "$lte": now}}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ],
+            "wow_prev": [
+                {"$match": {"date": {"$gte": wow_prev_start, "$lt": wow_curr_start}}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ],
+            "mom_curr": [
+                {"$match": {"date": {"$gte": mom_curr_start, "$lte": now}}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ],
+            "mom_prev": [
+                {"$match": {"date": {"$gte": mom_prev_start, "$lt": mom_curr_start}}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ]
+        }}
+    ]
+    
+    result = await expenses_col.aggregate(pipeline).to_list(None)
+    data = result[0] if result else {}
+    
+    # Safely extract from facet
+    def get_val(arr, field, default=0.0):
+        if arr and len(arr) > 0 and field in arr[0]:
+            return arr[0][field]
+        return default
+
+    # Current Range Stats
+    current_range = data.get("current_range", [])
+    total_spent = sum(d.get("total", 0.0) for d in current_range)
+    average_daily_spend = total_spent / duration_days
+    
+    # WoW Calculations
+    wow_curr = get_val(data.get("wow_curr", []), "total")
+    wow_prev = get_val(data.get("wow_prev", []), "total")
+    week_over_week = ((wow_curr - wow_prev) / wow_prev * 100) if wow_prev > 0 else 0.0
+    
+    # MoM Calculations
+    mom_curr = get_val(data.get("mom_curr", []), "total")
+    mom_prev = get_val(data.get("mom_prev", []), "total")
+    month_over_month = ((mom_curr - mom_prev) / mom_prev * 100) if mom_prev > 0 else 0.0
+    
+    # Trend Chart Points
+    current_day_totals = {d["_id"]: d.get("total", 0.0) for d in current_range}
+    current_day_counts = {d["_id"]: d.get("count", 0) for d in current_range}
+    
+    previous_range = data.get("previous_range", [])
+    prev_day_totals = {d["_id"]: d.get("total", 0.0) for d in previous_range}
+    
     trend_chart = []
     for i in range(duration_days):
         current_day = start_dt + timedelta(days=i)
@@ -124,17 +150,16 @@ async def get_analytics_trends(
             "expense_count": current_day_counts.get(current_day_str, 0)
         })
         
-    # Category breakdown for selected range
-    from app.services.category_service import CategoryService
+    # Category breakdown
     categories = await CategoryService.get_user_categories(user_id)
-    cat_id_to_name = {c["id"]: c["name"] for c in categories}
-
+    cat_id_to_name = {str(c["id"]): c["name"] for c in categories}
+    
     category_totals = {}
-    for e in current_expenses:
-        cat_id = str(e.get("category_id", ""))
+    for d in data.get("category_totals", []):
+        cat_id = str(d.get("_id", ""))
         cat_name = cat_id_to_name.get(cat_id, "Others")
-        category_totals[cat_name] = category_totals.get(cat_name, 0.0) + e["amount"]
-
+        category_totals[cat_name] = category_totals.get(cat_name, 0.0) + d.get("total", 0.0)
+        
     category_breakdown = []
     if total_spent > 0:
         for cat, amt in category_totals.items():

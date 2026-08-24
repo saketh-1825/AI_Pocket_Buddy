@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiChevronDown, FiDownload } from "react-icons/fi";
+import { FiDownload, FiChevronDown } from "react-icons/fi";
 
 export default function ExportMenu({ options = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -18,36 +17,16 @@ export default function ExportMenu({ options = [] }) {
   }, []);
 
   const dropdownVariants = {
-    hidden: {
-      opacity: 0,
-      y: -10,
-      scale: 0.95
-    },
+    hidden: { opacity: 0, y: -10, scale: 0.95 },
     visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        type: "spring",
-        stiffness: 350,
-        damping: 30,
-        duration: 0.2
-      }
+      opacity: 1, y: 0, scale: 1,
+      transition: { type: "spring", stiffness: 350, damping: 30, duration: 0.2 }
     },
-    exit: {
-      opacity: 0,
-      y: -10,
-      scale: 0.95,
-      transition: {
-        duration: 0.15,
-        ease: "easeInOut"
-      }
-    }
+    exit: { opacity: 0, y: -10, scale: 0.95, transition: { duration: 0.15, ease: "easeInOut" } }
   };
 
   return (
     <div className="relative inline-block text-left" ref={menuRef}>
-      {/* TRIGGER BUTTON */}
       <motion.button
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
@@ -59,7 +38,6 @@ export default function ExportMenu({ options = [] }) {
         <FiChevronDown className={`h-3.5 w-3.5 text-[#94A3B8] transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </motion.button>
 
-      {/* DROPDOWN MENU */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -95,4 +73,3 @@ export default function ExportMenu({ options = [] }) {
     </div>
   );
 }
-

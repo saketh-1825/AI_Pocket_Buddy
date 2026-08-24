@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-import API from "../services/api/axios";
+import { useAuthStore } from "../store/authStore";
+import { login } from "../services/auth/authService";
 
 function Login() {
 
   const navigate = useNavigate();
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -24,19 +26,12 @@ function Login() {
 
     try {
 
-      const response = await API.post("/login", formData);
-
-      localStorage.setItem(
-        "token",
-        response.data.access_token
-      );
+      const response = await login(formData);
 
       const fallbackName = formData.email.split("@")[0];
       const capitalizedFallback = fallbackName.charAt(0).toUpperCase() + fallbackName.slice(1);
-      localStorage.setItem(
-        "userName",
-        capitalizedFallback
-      );
+      
+      setAuth(response.access_token, capitalizedFallback);
 
       navigate("/");
 

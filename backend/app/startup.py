@@ -2,7 +2,12 @@ import logging
 import sys
 from app.services.migrations.migration_runner import MigrationRunner
 from app.services.index_manager import IndexManager
-
+'''
+Has startup logic
+    Orchestrates application database startup:
+    1. MigrationRunner checks and executes versioned data migrations sequentially.
+    2. IndexManager validates and guarantees database indexes dynamically.
+'''
 logger = logging.getLogger("startup_orchestrator")
 
 def safe_print(text: str):

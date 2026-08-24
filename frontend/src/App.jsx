@@ -13,11 +13,12 @@ import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import Layout from "./components/layout/Layout";
+import { useAuthStore } from "./store/authStore";
 
 // Redirect already-authenticated users away from public pages (login/register)
 function PublicRoute({ children }) {
-  const token = localStorage.getItem("token");
-  return token ? <Navigate to="/" replace /> : children;
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return isAuthenticated ? <Navigate to="/" replace /> : children;
 }
 
 function App() {

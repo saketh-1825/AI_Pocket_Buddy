@@ -57,6 +57,7 @@ async def test_user(setup_db_loop):
     await app_db.db["users"].delete_one({"_id": user_id})
     await app_db.db["expenses"].delete_many({"user_id": user_id_str})
     await app_db.db["budgets"].delete_many({"user_id": user_id_str})
+    await app_db.db["categories"].delete_many({"user_id": user_id_str})
 
 @pytest.fixture
 async def client(setup_db_loop):

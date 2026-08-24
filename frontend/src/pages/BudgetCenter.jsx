@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FiPlus, 
   FiEdit2, 
   FiTrash2, 
-  FiX
+  FiX,
+  FiDownload,
+  FiChevronDown
 } from "react-icons/fi";
 import { toast } from "react-toastify";
 
@@ -18,11 +20,12 @@ import {
 } from "../services/budgets/budgetService";
 import { getCategories } from "../services/api/categories";
 import { getBudgetVsActual } from "../services/insights/insightsService";
-import { getCategoryChartColor, getCategoryIcon } from "../constants/categories";
+import { getCategoryIcon } from "../constants/categories";
 import BudgetVsActualChart from "../components/analytics/BudgetVsActualChart";
 import { exportAsPNG } from "../utils/exportAsPNG";
-import ExportMenu from "../components/ui/ExportMenu";
 import SidebarToggle from "../components/layout/SidebarToggle";
+import ExportMenu from "../components/ui/ExportMenu";
+import { formatCurrency } from "../utils/currencyFormat";
 
 export default function BudgetCenter() {
   const navigate = useNavigate();
@@ -31,7 +34,6 @@ export default function BudgetCenter() {
   const [spent, setSpent] = useState(0);
   const [categoryBudgets, setCategoryBudgets] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [budgetSummary, setBudgetSummary] = useState(null);
   const [budgetVsActualData, setBudgetVsActualData] = useState(null);
 
   // Modals state
@@ -60,7 +62,6 @@ export default function BudgetCenter() {
 
       setCategories(cats);
       setCategoryBudgets(catBudgets);
-      setBudgetSummary(summary);
       setBudgetVsActualData(budgetVsActual);
       
       setBudget(summary.total_budget || 0);
@@ -85,15 +86,6 @@ export default function BudgetCenter() {
   useEffect(() => {
     loadBudgetData();
   }, []);
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency",
-      currency: "INR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
 
   const handleCreateBudget = async (e) => {
     e.preventDefault();
@@ -328,20 +320,15 @@ export default function BudgetCenter() {
               const catObj = categories.find(
                 (c) => c.name.toLowerCase() === b.category.toLowerCase()
               );
-              const catColor = catObj ? catObj.color : "#94A3B8";
               const catIconKey = catObj ? catObj.icon_key : "others";
               const isOver = b.progress_percentage > 100;
-              const barColor = isOver ? "#EF4444" : catColor;
               
               // Status Pill configuration
               let statusLabel = "SAFE";
-              let statusClass = "bg-green-50 text-[#22C55E] border-green-200";
               if (isOver) {
                 statusLabel = "OVER";
-                statusClass = "bg-red-50 text-[#EF4444] border-red-200";
               } else if (b.progress_percentage > 80) {
                 statusLabel = "WARNING";
-                statusClass = "bg-orange-50 text-[#F59E0B] border-orange-200";
               }
 
               const IconComponent = getCategoryIcon(catIconKey);

@@ -1,1 +1,0 @@
-CATEGORY_COLLECTION = "categories"

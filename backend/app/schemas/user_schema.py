@@ -11,10 +11,3 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
-
-
-class UserResponse(BaseModel):
-    id: str
-    name: str
-    email: EmailStr
-    created_at: datetime

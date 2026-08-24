@@ -1,12 +1,13 @@
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useAuthStore } from "../../store/authStore";
 
 const API = axios.create({
   baseURL: "http://127.0.0.1:8000",
 });
 
 API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = useAuthStore.getState().token;
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -26,8 +27,7 @@ API.interceptors.response.use(
         // Only redirect to login if we are not already on login or register pages
         if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
           toast.error("Session expired. Please login again.", { theme: "dark" });
-          localStorage.removeItem("token");
-          localStorage.removeItem("userName");
+          useAuthStore.getState().clearAuth();
           window.location.href = "/login";
         } else {
           toast.error(errorMessage, { theme: "dark" });

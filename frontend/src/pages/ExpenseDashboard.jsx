@@ -1,42 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   FiPlus, 
-  FiSearch, 
-  FiChevronLeft, 
-  FiChevronRight, 
-  FiMoreVertical
+  FiSearch
 } from "react-icons/fi";
 import { toast } from "react-toastify";
-import Papa from "papaparse";
 
 import AddExpenseModal from "../components/forms/AddExpenseModal";
 import EditExpenseModal from "../components/forms/EditExpenseModal";
 import DeleteConfirmModal from "../components/ui/DeleteConfirmModal";
-import ExpenseSkeleton from "../components/ui/ExpenseSkeleton";
 import SidebarToggle from "../components/layout/SidebarToggle";
 import ExpenseList from "../components/dashboard/ExpenseList";
 import { useCategoryStore } from "../store/categoryStore";
 import { useExpenseStore } from "../store/expenseStore";
-import { getCurrentBudget, updateCurrentBudget, getBudgetSummary } from "../services/budgets/budgetService";
+import { getCurrentBudget, getBudgetSummary } from "../services/budgets/budgetService";
 import { getAISummary } from "../services/insights/insightsService";
 import { getAnalyticsSummary } from "../services/analytics/analyticsService";
-import { parseExpenseText } from "../utils/quickAddParser";
 import BudgetSetupModal from "../components/budgets/BudgetSetupModal";
-import { getCategoryStyles } from "../constants/categories";
 import MonthlySpendingChart from "../components/analytics/MonthlySpendingChart";
 import ActivityHeatmap from "../components/analytics/ActivityHeatmap";
 
-// Currency Formatter
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
+import { formatCurrency } from "../utils/currencyFormat";
+
 
 function ExpenseDashboard() {
   const navigate = useNavigate();
@@ -46,12 +31,10 @@ function ExpenseDashboard() {
   const { categories } = useCategoryStore();
   const [budget, setBudget] = useState(10000);
   const [budgetExists, setBudgetExists] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [aiSummary, setAiSummary] = useState(null);
-  const [budgetSummary, setBudgetSummary] = useState(null);
   const [analyticsSummary, setAnalyticsSummary] = useState(null);
 
   // Search, Sort, Pagination, View Mode State
@@ -59,7 +42,6 @@ function ExpenseDashboard() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeMenuId, setActiveMenuId] = useState(null);
   const [activeInsightIdx, setActiveInsightIdx] = useState(0);
   const itemsPerPage = 8;
 
@@ -69,22 +51,11 @@ function ExpenseDashboard() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
 
-  // Floating Quick Add State
-  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
-  const [quickAddText, setQuickAddText] = useState("");
-  const [quickAddFields, setQuickAddFields] = useState({
-    amount: "",
-    category: "Others",
-    description: "",
-  });
-  const [isQuickAddSaving, setIsQuickAddSaving] = useState(false);
-
   const [userName] = useState(() => {
     return localStorage.getItem("userName") || "Saketh";
   });
 
   const loadData = async () => {
-    setIsLoading(true);
     try {
       const now = new Date();
       const month = now.getMonth() + 1;
@@ -104,12 +75,9 @@ function ExpenseDashboard() {
       setBudgetExists(activeBudget > 0);
       
       setAiSummary(summaryData);
-      setBudgetSummary(summary);
       setAnalyticsSummary(analyticsSum);
     } catch (error) {
       console.error("Failed to load dashboard data:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -137,15 +105,10 @@ function ExpenseDashboard() {
       toast.success("Expense added successfully", { theme: "light" });
       setIsAddOpen(false);
       
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const year = now.getFullYear();
-      const [summaryData, summary, analyticsSum] = await Promise.all([
+      const [summaryData, analyticsSum] = await Promise.all([
         getAISummary(),
-        getBudgetSummary(month, year),
         getAnalyticsSummary()
       ]);
-      setBudgetSummary(summary);
       setAiSummary(summaryData);
       setAnalyticsSummary(analyticsSum);
     } catch (error) {
@@ -168,15 +131,10 @@ function ExpenseDashboard() {
       setIsEditOpen(false);
       setSelectedExpense(null);
       
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const year = now.getFullYear();
-      const [summaryData, summary, analyticsSum] = await Promise.all([
+      const [summaryData, analyticsSum] = await Promise.all([
         getAISummary(),
-        getBudgetSummary(month, year),
         getAnalyticsSummary()
       ]);
-      setBudgetSummary(summary);
       setAiSummary(summaryData);
       setAnalyticsSummary(analyticsSum);
     } catch (error) {
@@ -203,81 +161,16 @@ function ExpenseDashboard() {
       setIsDeleteOpen(false);
       setSelectedExpense(null);
       
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const year = now.getFullYear();
-      const [summaryData, summary, analyticsSum] = await Promise.all([
+      const [summaryData, analyticsSum] = await Promise.all([
         getAISummary(),
-        getBudgetSummary(month, year),
         getAnalyticsSummary()
       ]);
-      setBudgetSummary(summary);
       setAiSummary(summaryData);
       setAnalyticsSummary(analyticsSum);
     } catch (error) {
       console.error("Failed to delete expense:", error);
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleQuickAddTextChange = (e) => {
-    const text = e.target.value;
-    setQuickAddText(text);
-    const parsed = parseExpenseText(text);
-    setQuickAddFields({
-      amount: parsed.amount > 0 ? parsed.amount.toString() : "",
-      category: parsed.category,
-      description: parsed.description,
-    });
-  };
-
-  const handleQuickAddSave = async (e) => {
-    e.preventDefault();
-    const amountFloat = parseFloat(quickAddFields.amount);
-    if (isNaN(amountFloat) || amountFloat <= 0) {
-      toast.error("Amount must be greater than 0", { theme: "light" });
-      return;
-    }
-    if (!quickAddFields.description.trim()) {
-      toast.error("Description is required", { theme: "light" });
-      return;
-    }
-
-    setIsQuickAddSaving(true);
-    try {
-      const targetCatName = quickAddFields.category;
-      const matchedCat = categories.find(c => c.name.toLowerCase() === targetCatName.toLowerCase()) || 
-                         categories.find(c => c.name.toLowerCase() === "others");
-      const categoryId = matchedCat ? matchedCat.id : "";
-
-      await useExpenseStore.getState().addExpense({
-        description: quickAddFields.description,
-        amount: amountFloat,
-        category_id: categoryId,
-        date: new Date().toISOString().split("T")[0],
-      });
-      toast.success("Expense added successfully!", { theme: "light" });
-      setIsQuickAddOpen(false);
-      setQuickAddText("");
-      setQuickAddFields({ amount: "", category: "Others", description: "" });
-      
-      const now = new Date();
-      const month = now.getMonth() + 1;
-      const year = now.getFullYear();
-      const [summaryData, summary, analyticsSum] = await Promise.all([
-        getAISummary(),
-        getBudgetSummary(month, year),
-        getAnalyticsSummary()
-      ]);
-      setAiSummary(summaryData);
-      setBudgetSummary(summary);
-      setAnalyticsSummary(analyticsSum);
-    } catch (err) {
-      console.error("Quick Add failed:", err);
-      toast.error("Failed to quick add expense", { theme: "light" });
-    } finally {
-      setIsQuickAddSaving(false);
     }
   };
 
@@ -331,33 +224,14 @@ function ExpenseDashboard() {
   };
 
   const getInsightsList = () => {
-    if (!aiSummary) return [];
-    
-    const topCat = aiSummary.top_category?.category || "Entertainment";
-    const topCatTotal = aiSummary.top_category?.amount || 1800;
-    const overspent = aiSummary.recommended_saving ? Math.round(aiSummary.recommended_saving) : 500;
-    const suggested = Math.max(500, Math.round(topCatTotal - overspent));
+    if (!aiSummary || !aiSummary.message) return [];
     
     return [
       {
         id: 1,
-        title: "Insight",
-        text: `You spent ${formatCurrency(topCatTotal)} on ${topCat} this month. That's ${formatCurrency(overspent)} more than last month. Consider setting a ${formatCurrency(suggested)} budget.`,
-        actionLabel: "Set Budget",
-        action: () => navigate("/budgets"),
-      },
-      {
-        id: 2,
-        title: "Consistency Booster",
-        text: "Food expenses dropped 12% compared to last week. Great job maintaining consistency!",
-        actionLabel: "Keep Tracking",
-        action: null,
-      },
-      {
-        id: 3,
-        title: "Savings Opportunity",
-        text: `You can save ${formatCurrency(overspent * 2.5)} monthly by optimizing your subscriptions. Consider reviewing your Bills category limits.`,
-        actionLabel: "Review Budgets",
+        title: "AI Analysis",
+        text: aiSummary.message,
+        actionLabel: aiSummary.overspending_detected ? "Review Budgets" : "View Budgets",
         action: () => navigate("/budgets"),
       }
     ];

@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiTrendingUp, FiActivity, FiX, FiCheck, FiPlus, FiAlertCircle } from "react-icons/fi";
 import { toast } from "react-toastify";
 import SidebarToggle from "../components/layout/SidebarToggle";
 import AIBuddyCard from "../components/ai/AIBuddyCard";
@@ -14,9 +12,7 @@ import { getExpenses } from "../services/api/expenses";
 import { getCurrentBudget, updateCurrentBudget } from "../services/budgets/budgetService";
 
 export default function AIBuddyPage() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [spendingPattern, setSpendingPattern] = useState(null);
   const [aiSummary, setAiSummary] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [budget, setBudget] = useState(10000);
@@ -28,13 +24,12 @@ export default function AIBuddyPage() {
   const loadAIData = async () => {
     setLoading(true);
     try {
-      const [pattern, summary, expList, currentBudget] = await Promise.all([
+      const [, summary, expList, currentBudget] = await Promise.all([
         getSpendingPattern(),
         getAISummary(),
         getExpenses(),
         getCurrentBudget()
       ]);
-      setSpendingPattern(pattern);
       setAiSummary(summary);
       setExpenses(expList);
       if (currentBudget && currentBudget.monthly_budget !== undefined) {

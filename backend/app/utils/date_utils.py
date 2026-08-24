@@ -12,9 +12,3 @@ def parse_date(date_str: str, is_end: bool = False) -> datetime:
         # Fallback if standard format doesn't match
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         return dt.astimezone(timezone.utc)
-
-def format_date_to_str(dt: datetime) -> str:
-    """Formats a datetime object to YYYY-MM-DD string."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.strftime("%Y-%m-%d")

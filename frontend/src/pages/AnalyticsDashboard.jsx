@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAnalyticsStore } from "../store/analyticsStore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiArrowLeft,
-  FiMoreVertical
+  FiDownload,
+  FiChevronDown
 } from "react-icons/fi";
 
 import { getAnalyticsSummary, getAnalyticsTrends } from "../services/analytics/analyticsService";
@@ -12,7 +14,8 @@ import { getCurrentBudget } from "../services/budgets/budgetService";
 
 import { exportAsPNG } from "../utils/exportAsPNG";
 import SidebarToggle from "../components/layout/SidebarToggle";
-
+import ExportMenu from "../components/ui/ExportMenu";
+import { formatCurrency } from "../utils/currencyFormat";
 // Reusable Sub-components
 import ChartCard from "../components/analytics/ChartCard";
 import KPICard from "../components/analytics/KPICard";
@@ -25,20 +28,11 @@ import LoadingChartSkeleton from "../components/analytics/LoadingChartSkeleton";
 import DateRangePicker from "../components/analytics/DateRangePicker";
 import ComparisonBadge from "../components/analytics/ComparisonBadge";
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
 
 export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(true);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const [errorState, setErrorState] = useState(false);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
   
   // Data States
   const [summaryData, setSummaryData] = useState(null);
@@ -47,18 +41,20 @@ export default function AnalyticsDashboard() {
   const [aiSummary, setAiSummary] = useState(null);
 
   // Date Range Picker States
-  const [selectedRange, setSelectedRange] = useState("30d");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const { activePeriod: selectedRange, startDate, endDate, setActivePeriod, setDateRange } = useAnalyticsStore();
 
   const fetchSummaryAndInitialTrends = async () => {
     setLoading(true);
     setErrorState(false);
     try {
+      const params = { range: selectedRange };
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+
       const [summary, budgetInfo, trends, aiInfo] = await Promise.all([
         getAnalyticsSummary(),
         getCurrentBudget(),
-        getAnalyticsTrends({ range: "30d" }),
+        getAnalyticsTrends(params),
         getAISummary()
       ]);
       setSummaryData(summary);
@@ -95,12 +91,12 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     fetchSummaryAndInitialTrends();
-  }, []);
+  }, []); // Note: leaving dependency array empty to run once per mount as before.
+
 
   const handleRangeChange = async (range, start, end) => {
-    setSelectedRange(range);
-    setStartDate(start);
-    setEndDate(end);
+    setActivePeriod(range);
+    setDateRange(start, end);
     await fetchTrendsData(range, start, end);
   };
 
@@ -177,57 +173,19 @@ export default function AnalyticsDashboard() {
           <h1 className="text-[32px] font-bold tracking-tight text-textPrimary font-heading">
             Analytics
           </h1>
-          <div className="relative">
-            <button
-              onClick={() => setShowExportDropdown(!showExportDropdown)}
-              className="p-1.5 hover:bg-hoverAccent border border-border rounded-lg text-textSecondary hover:text-textPrimary transition-all cursor-pointer focus:outline-none"
-            >
-              <FiMoreVertical className="h-5 w-5" />
-            </button>
-            <AnimatePresence>
-              {showExportDropdown && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setShowExportDropdown(false)} />
-                  <motion.div
-                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute left-0 mt-2 w-48 rounded-xl bg-surface border border-border p-1.5 shadow-md z-40 origin-top-left"
-                  >
-                    <button
-                      onClick={() => {
-                        setShowExportDropdown(false);
-                        exportAsPNG("bar-chart-wrapper", "monthly_spending");
-                        exportAsPNG("pie-chart-wrapper", "category_distribution");
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-textSecondary hover:text-textPrimary hover:bg-hoverAccent transition-all cursor-pointer focus:outline-none"
-                    >
-                      Download PNG
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportDropdown(false);
-                        window.print();
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-textSecondary hover:text-textPrimary hover:bg-hoverAccent transition-all cursor-pointer focus:outline-none"
-                    >
-                      Download PDF
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportDropdown(false);
-                        window.print();
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-textSecondary hover:text-textPrimary hover:bg-hoverAccent transition-all cursor-pointer focus:outline-none"
-                    >
-                      Print Report
-                    </button>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
+          <ExportMenu 
+            options={[
+              { 
+                label: "Download PNG", 
+                onClick: () => {
+                  exportAsPNG("bar-chart-wrapper", "monthly_spending");
+                  exportAsPNG("pie-chart-wrapper", "category_distribution");
+                } 
+              },
+              { label: "Download PDF", onClick: () => window.print() },
+              { label: "Print Report", onClick: () => window.print() }
+            ]} 
+          />
         </div>
         
         {/* Date Selector */}
