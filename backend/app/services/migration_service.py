@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timezone
-from app.utils.database import db
+from app.database import db
 
 logger = logging.getLogger("migration_service")
 

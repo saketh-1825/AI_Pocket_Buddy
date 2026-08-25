@@ -2,8 +2,8 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple
 from bson import ObjectId
 from fastapi import HTTPException, status
-from app.utils.database import db
-from app.services.pandas_service import PandasAnalyticsService
+from app.database import db
+import pandas as pd
 from app.schemas.budget_schema import BudgetCreate, BudgetUpdate
 
 class BudgetService:
@@ -23,6 +23,80 @@ class BudgetService:
             return "ALMOST EXCEEDED"
         else:
             return "OVER BUDGET"
+
+    @classmethod
+    async def load_expenses_dataframe(cls, user_id: str) -> pd.DataFrame:
+        """
+        Queries MongoDB expenses collection for user_id with an optimized projection,
+        converting results into a Pandas DataFrame.
+        """
+        expenses_col = db["expenses"]
+        projection = {
+            "_id": 0,
+            "user_id": 1,
+            "amount": 1,
+            "category_id": 1,
+            "date": 1,
+            "description": 1,
+            "title": 1  # Fetch title as well for word frequency
+        }
+        cursor = expenses_col.find({"user_id": user_id}, projection)
+        records = await cursor.to_list(None)
+        
+        if not records:
+            return pd.DataFrame(columns=["user_id", "amount", "category", "date", "description", "title"])
+            
+        # Resolve category names from category_id
+        from app.services.category_service import CategoryService
+        categories = await CategoryService.get_user_categories(user_id)
+        cat_id_to_name = {c["id"]: c["name"] for c in categories}
+        
+        for r in records:
+            cat_id = str(r.get("category_id", ""))
+            r["category"] = cat_id_to_name.get(cat_id, "Others")
+            if "category_id" in r:
+                del r["category_id"]
+        
+        df = pd.DataFrame(records)
+        for col in ["user_id", "amount", "category", "date", "description", "title"]:
+            if col not in df.columns:
+                df[col] = None
+        return df
+
+    @classmethod
+    def prepare_dataframe(cls, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Preprocesses the dataframe by ensuring proper datatypes and extracting
+        date components (day_name, hour, month, year, weekday).
+        """
+        if df.empty:
+            for col in ["day_name", "hour", "month", "year", "weekday"]:
+                if col not in df.columns:
+                    df[col] = pd.Series(dtype='object')
+            return df
+        
+        # Convert date to datetime. Motor may return tz-aware UTC datetimes.
+        # We must tz_convert to UTC first, then strip the timezone — NOT tz_localize(None)
+        # directly (which would silently drop tz without converting and give wrong values).
+        parsed_dates = pd.to_datetime(df["date"])
+        if parsed_dates.dt.tz is not None:
+            # tz-aware: convert to UTC then strip timezone info
+            df["date"] = parsed_dates.dt.tz_convert("UTC").dt.tz_localize(None)
+        else:
+            # tz-naive: already UTC (Motor < 3.x behavior), no conversion needed
+            df["date"] = parsed_dates
+        
+        # Extract features
+        df["day_name"] = df["date"].dt.day_name()
+        df["hour"] = df["date"].dt.hour
+        df["month"] = df["date"].dt.month
+        df["year"] = df["date"].dt.year
+        df["weekday"] = df["date"].dt.weekday
+        
+        # Coerce amount to numeric
+        df["amount"] = pd.to_numeric(df["amount"], errors='coerce').fillna(0.0)
+        
+        return df
 
     @classmethod
     async def create_budget(cls, user_id: str, budget_data: BudgetCreate) -> Dict[str, Any]:
@@ -73,8 +147,8 @@ class BudgetService:
             )
         
         # Calculate progress
-        df = await PandasAnalyticsService.load_expenses_dataframe(user_id)
-        df = PandasAnalyticsService.prepare_dataframe(df)
+        df = await cls.load_expenses_dataframe(user_id)
+        df = cls.prepare_dataframe(df)
         
         category = budget["category"]
         month = budget["month"]
@@ -112,8 +186,8 @@ class BudgetService:
         })
         budgets = await cursor.to_list(None)
         
-        df = await PandasAnalyticsService.load_expenses_dataframe(user_id)
-        df = PandasAnalyticsService.prepare_dataframe(df)
+        df = await cls.load_expenses_dataframe(user_id)
+        df = cls.prepare_dataframe(df)
         
         results = []
         for b in budgets:
@@ -236,8 +310,8 @@ class BudgetService:
         else:
             total_budget = sum(b["limit_amount"] for b in cat_budgets)
             
-        df = await PandasAnalyticsService.load_expenses_dataframe(user_id)
-        df = PandasAnalyticsService.prepare_dataframe(df)
+        df = await cls.load_expenses_dataframe(user_id)
+        df = cls.prepare_dataframe(df)
         
         total_spent = 0.0
         if not df.empty:

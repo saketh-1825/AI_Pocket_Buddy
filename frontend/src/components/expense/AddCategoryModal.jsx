@@ -20,18 +20,15 @@ export default function AddCategoryModal({ isOpen, onClose, onCategoryCreated })
     if (e && e.preventDefault) {
       e.preventDefault();
     }
-    console.log("Step 1: submit handler executing...");
     setError("");
 
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError("Category name is required.");
-      console.log("FAILED HERE: Component: AddCategoryModal, Function: handleSubmit, Reason: Validation failed - name required");
       return;
     }
     if (trimmedName.length < 2 || trimmedName.length > 25) {
       setError("Name must be between 2 and 25 characters.");
-      console.log("FAILED HERE: Component: AddCategoryModal, Function: handleSubmit, Reason: Validation failed - name length invalid");
       return;
     }
 
@@ -41,41 +38,27 @@ export default function AddCategoryModal({ isOpen, onClose, onCategoryCreated })
     );
     if (isDuplicate) {
       setError(`Category "${trimmedName}" already exists.`);
-      console.log("FAILED HERE: Component: AddCategoryModal, Function: handleSubmit, Reason: Validation failed - duplicate name");
       return;
     }
 
-    console.log("Step 1: validation passed.");
-    console.log("Step 1: loading state beginning...");
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem("token");
-      console.log("Step 2: Submitting category...");
-      console.log("Request URL: http://127.0.0.1:8000/categories");
-      console.log("Request Body:", { name: trimmedName, icon_key: selectedIcon, color: selectedColor });
-      console.log("Headers:", { Authorization: `Bearer ${token}`, "Content-Type": "application/json" });
-      console.log("JWT Token:", token);
-
       const res = await addCategory({
         name: trimmedName,
         icon_key: selectedIcon,
         color: selectedColor
       });
 
-      console.log("Step 4: Response received:", res);
       toast.success("Category created successfully.", { theme: "light" });
 
-      console.log("Step 5: Locating in newly updated categoryStore cache...");
       // Re-fetch latest from store to find matching item with server ID
       const latestCategories = useCategoryStore.getState().categories;
       const createdCategory = latestCategories.find(
         (c) => c.id === res.id || c.name.toLowerCase() === trimmedName.toLowerCase()
       );
-      console.log("Step 5: Found category in fetched list:", createdCategory);
 
       if (!createdCategory) {
-        console.log("FAILED HERE: Component: AddCategoryModal, Function: handleSubmit, Reason: Category not found in fresh GET list");
         throw new Error("Created category could not be verified from the server list");
       }
 
@@ -85,7 +68,6 @@ export default function AddCategoryModal({ isOpen, onClose, onCategoryCreated })
       setSelectedColor("#4F46E5");
       onClose();
     } catch (err) {
-      console.log("FAILED HERE: Component: AddCategoryModal, Function: handleSubmit, Reason: API request failed");
       console.error("AddCategoryModal: Failed to create category:", err);
       const errMsg = err.response?.data?.detail || err.message || "Failed to create category. Please try again.";
       setError(errMsg);

@@ -2,12 +2,10 @@ import { Link, useLocation } from "react-router-dom";
 import { useSidebar } from "../../hooks/useSidebar";
 import {
   FiGrid,
-  FiTrendingUp,
   FiDollarSign,
   FiTag,
   FiSettings,
   FiLogOut,
-  FiZap,
   FiChevronLeft,
   FiChevronRight,
   FiX,
@@ -21,9 +19,7 @@ export default function Sidebar({ handleLogout, userName }) {
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: FiGrid, color: "#4F46E5" },
-    { path: "/analytics", label: "Analytics", icon: FiTrendingUp, color: "#0EA5E9" },
     { path: "/budgets", label: "Budgets", icon: FiDollarSign, color: "#22C55E" },
-    { path: "/ai-buddy", label: "AI Insights", icon: FiZap, color: "#14B8A6" },
     { path: "/settings", label: "Settings", icon: FiSettings, color: "#6B7280" },
   ];
 
@@ -45,9 +41,8 @@ export default function Sidebar({ handleLogout, userName }) {
     <aside className={sidebarClasses} role="navigation">
       <div className="flex flex-col">
         {/* Logo / Header */}
-        <div className={`h-20 flex items-center border-b border-[#E5E7EB] transition-all duration-200 ${
-          isCollapsed ? "px-0 justify-center" : "pl-6 pr-4 justify-between"
-        } w-full`}>
+        <div className={`h-20 flex items-center border-b border-[#E5E7EB] transition-all duration-200 ${isCollapsed ? "px-0 justify-center" : "pl-6 pr-4 justify-between"
+          } w-full`}>
           {isMobileOpen ? (
             /* Mobile Open State Drawer Header */
             <>
@@ -103,7 +98,7 @@ export default function Sidebar({ handleLogout, userName }) {
                   Pocket Buddy
                 </span>
               </div>
-              
+
               {/* Desktop Collapse Button */}
               <button
                 onClick={closeSidebar}
@@ -130,11 +125,10 @@ export default function Sidebar({ handleLogout, userName }) {
                     closeSidebar();
                   }
                 }}
-                className={`flex items-center gap-3 py-3 rounded-xl text-[14px] font-semibold transition-all duration-200 relative group ${
-                  active
-                    ? "text-[#4F46E5] bg-[#EEF2FF]"
-                    : "text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]"
-                } ${isCollapsed ? "px-0 justify-center" : "px-4 justify-start"}`}
+                className={`flex items-center gap-3 py-3 rounded-xl text-[14px] font-semibold transition-all duration-200 relative group ${active
+                  ? "text-[#4F46E5] bg-[#EEF2FF]"
+                  : "text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]"
+                  } ${isCollapsed ? "px-0 justify-center" : "px-4 justify-start"}`}
                 style={{ transform: "translateZ(0)" }}
               >
                 <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : "w-full"}`}>
@@ -144,7 +138,7 @@ export default function Sidebar({ handleLogout, userName }) {
                   />
                   {!isCollapsed && <span className="truncate">{item.label}</span>}
                 </div>
-                
+
                 {isCollapsed && (
                   <div className="absolute left-full ml-4 px-3 py-1.5 bg-white border border-[#E5E7EB] text-[#111827] text-[12px] font-semibold rounded-lg shadow-sm opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-50 transition-all duration-150 delay-150 transform translate-x-[-10px] group-hover:translate-x-0" role="tooltip">
                     {item.label}
@@ -157,9 +151,8 @@ export default function Sidebar({ handleLogout, userName }) {
       </div>
 
       {/* Profile / Logout Footer */}
-      <div className={`p-4 border-t border-[#E5E7EB] select-none bg-white transition-all duration-200 ${
-        isCollapsed ? "px-2" : "px-4"
-      }`}>
+      <div className={`p-4 border-t border-[#E5E7EB] select-none bg-white transition-all duration-200 ${isCollapsed ? "px-2" : "px-4"
+        }`}>
         {!isCollapsed ? (
           <>
             <div className="flex items-center gap-3 px-2 mb-4">
@@ -174,7 +167,7 @@ export default function Sidebar({ handleLogout, userName }) {
                 <p className="text-[14px] font-bold text-[#111827] truncate leading-none">{userName}</p>
                 <p className="text-[12px] text-[#6B7280] font-medium truncate mt-1.5 leading-none">{userEmail}</p>
               </div>
-              
+
             </div>
             <button
               onClick={handleLogout}
@@ -188,7 +181,7 @@ export default function Sidebar({ handleLogout, userName }) {
           <div className="flex flex-col items-center gap-3">
             {/* Collapsed Avatar initials bubble */}
             <div className="relative group">
-              <div 
+              <div
                 className="w-9 h-9 rounded-full bg-[#EEF2FF] flex items-center justify-center border border-[#E2E8F0] cursor-pointer"
               >
                 <span className="text-[12px] font-bold text-[#4F46E5]">

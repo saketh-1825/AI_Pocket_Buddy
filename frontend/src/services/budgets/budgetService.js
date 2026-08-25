@@ -40,7 +40,3 @@ export const getBudgetSummary = async (month, year) => {
   return response.data;
 };
 
-export const getBudgetAlerts = async () => {
-  const response = await API.get("/budgets/alerts");
-  return response.data;
-};

@@ -1,5 +1,5 @@
 import logging
-from app.utils.database import db
+from app.database import db
 
 logger = logging.getLogger("index_manager")
 

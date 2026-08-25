@@ -38,15 +38,6 @@ export default function CategorySelector({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Trace categories after refresh
-  useEffect(() => {
-    console.log("Step 6: categories after refresh:", categories);
-  }, [categories]);
-
-  // Trace selectedCategory changes
-  useEffect(() => {
-    console.log("Step 7: selectedCategory changed. Value:", selectedCategory);
-  }, [selectedCategory]);
 
   const handleSelect = (categoryId) => {
     onChange(categoryId);
@@ -54,13 +45,8 @@ export default function CategorySelector({
   };
 
   const handleCategoryCreated = (newCategory) => {
-    console.log("Step 6: categories before refresh:", categories);
-    console.log("Step 7: selectedCategory before create:", selectedCategory);
-    
     // Select the new category by ID
-    console.log("Step 7: selectedCategory after create / pending refresh ID:", newCategory.id);
     onChange(newCategory.id);
-    
     setIsOpen(false);
     setIsModalOpen(false);
   };

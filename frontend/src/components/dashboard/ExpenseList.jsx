@@ -1,16 +1,8 @@
 import { motion } from "framer-motion";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 import { getCategoryStyles, getCategoryIcon } from "../../constants/categories";
+import { formatCurrency } from "../../utils/currencyFormat";
 
-// Currency Formatter
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-};
 
 // Date Formatter
 const formatDate = (dateString) => {

@@ -4,7 +4,7 @@ from bson import ObjectId
 from typing import List, Optional
 from datetime import datetime, timezone
 from app.utils.auth import get_current_user
-from app.utils.database import db
+from app.database import db
 from app.schemas.budget_schema import (
     BudgetCreate,
     BudgetUpdate,
