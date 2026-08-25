@@ -36,7 +36,11 @@ function Login() {
       navigate("/");
 
     } catch (error) {
-      console.log(error.response.data);
+      if (error.response && error.response.data) {
+        console.log(error.response.data);
+      } else {
+        console.error("Login failed:", error.message);
+      }
     }
   };
 

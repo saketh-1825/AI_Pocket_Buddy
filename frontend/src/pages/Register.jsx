@@ -35,9 +35,11 @@ function Register() {
       navigate("/");
 
     } catch (error) {
-
-      console.log(error.response.data);
-
+      if (error.response && error.response.data) {
+        console.log(error.response.data);
+      } else {
+        console.error("Registration failed:", error.message);
+      }
     }
   };
 

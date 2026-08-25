@@ -15,7 +15,7 @@ import {
 export default function Sidebar({ handleLogout, userName }) {
   const userEmail = localStorage.getItem("userEmail") || `${userName.toLowerCase().replace(/\s+/g, "")}@example.com`;
   const location = useLocation();
-  const { isCollapsed, isMobileOpen, closeSidebar, openSidebar } = useSidebar();
+  const { isCollapsed, openSidebar, closeSidebar } = useSidebar();
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: FiGrid, color: "#4F46E5" },
@@ -31,10 +31,8 @@ export default function Sidebar({ handleLogout, userName }) {
   };
 
   const sidebarClasses = `
-    fixed top-0 bottom-0 left-0 z-40 bg-white border-r border-[#E5E7EB] flex flex-col justify-between select-none transition-all duration-200 ease-in-out transform lg:z-30
-    ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-    w-[280px]
-    ${isCollapsed ? "lg:w-[72px]" : "lg:w-[220px]"}
+    hidden lg:flex fixed top-0 bottom-0 left-0 z-30 bg-white border-r border-[#E5E7EB] flex-col justify-between select-none transition-all duration-200 ease-in-out
+    ${isCollapsed ? "w-[72px]" : "w-[220px]"}
   `;
 
   return (
@@ -43,27 +41,7 @@ export default function Sidebar({ handleLogout, userName }) {
         {/* Logo / Header */}
         <div className={`h-20 flex items-center border-b border-[#E5E7EB] transition-all duration-200 ${isCollapsed ? "px-0 justify-center" : "pl-6 pr-4 justify-between"
           } w-full`}>
-          {isMobileOpen ? (
-            /* Mobile Open State Drawer Header */
-            <>
-              <div className="flex items-center gap-2">
-                <span className="text-[20px] font-extrabold text-[#4F46E5] shrink-0">
-                  PB
-                </span>
-                <span className="text-[18px] font-extrabold tracking-tight text-[#111827] truncate">
-                  Pocket Buddy
-                </span>
-              </div>
-              {/* Mobile Close Button */}
-              <button
-                onClick={closeSidebar}
-                className="w-9 h-9 flex items-center justify-center bg-transparent text-[#6B7280] hover:text-[#111827] cursor-pointer transition-colors shrink-0 focus:outline-none"
-                aria-label="Close menu drawer"
-              >
-                <FiX className="h-5 w-5" />
-              </button>
-            </>
-          ) : isCollapsed ? (
+          {isCollapsed ? (
             /* Desktop Collapsed State Header */
             <div
               onClick={openSidebar}
@@ -120,11 +98,6 @@ export default function Sidebar({ handleLogout, userName }) {
               <Link
                 key={item.path}
                 to={item.path}
-                onClick={() => {
-                  if (isMobileOpen) {
-                    closeSidebar();
-                  }
-                }}
                 className={`flex items-center gap-3 py-3 rounded-xl text-[14px] font-semibold transition-all duration-200 relative group ${active
                   ? "text-[#4F46E5] bg-[#EEF2FF]"
                   : "text-[#6B7280] hover:text-[#111827] hover:bg-[#F8FAFC]"
